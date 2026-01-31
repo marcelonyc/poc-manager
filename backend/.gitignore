@@ -1,0 +1,50 @@
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+ENV/
+env/
+.venv
+*.egg-info/
+dist/
+build/
+*.egg
+
+# Database
+*.db
+*.sqlite3
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Testing
+.coverage
+htmlcov/
+.pytest_cache/
+.tox/
+
+# Alembic
+alembic/versions/*.pyc
+
+# Uploads
+uploads/*
+!uploads/.gitkeep
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/

@@ -1,0 +1,83 @@
+site_name: POC Manager User Guide
+site_description: Complete guide for managing Proof of Concept engagements
+site_author: POC Manager Team
+site_url: https://poc-manager.example.com
+
+theme:
+  name: material
+  palette:
+    # Palette toggle for light mode
+    - scheme: default
+      primary: blue
+      accent: indigo
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    # Palette toggle for dark mode
+    - scheme: slate
+      primary: blue
+      accent: indigo
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.expand
+    - navigation.top
+    - search.suggest
+    - search.highlight
+    - content.tabs.link
+    - content.code.copy
+  icon:
+    repo: fontawesome/brands/github
+
+plugins:
+  - search
+  - tags
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+  - attr_list
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+
+nav:
+  - Home: index.md
+  - Getting Started:
+    - Overview: getting-started/overview.md
+    - Login & Authentication: getting-started/login.md
+    - User Roles: getting-started/roles.md
+  - Platform Admin:
+    - Tenant Management: platform-admin/tenants.md
+  - Tenant Admin:
+    - User Management: tenant-admin/users.md
+    - Tenant Settings: tenant-admin/settings.md
+  - Administrator:
+    - Task Templates: administrator/task-templates.md
+    - Creating POCs: administrator/creating-pocs.md
+    - Managing POCs: administrator/managing-pocs.md
+  - Sales Engineer:
+    - POC Overview: sales-engineer/poc-overview.md
+    - Inviting Customers: sales-engineer/inviting-customers.md
+    - Managing Tasks: sales-engineer/managing-tasks.md
+    - Adding Resources: sales-engineer/adding-resources.md
+    - Tracking Progress: sales-engineer/tracking-progress.md
+  - Customer:
+    - Viewing POCs: customer/viewing-pocs.md
+    - Providing Feedback: customer/providing-feedback.md
+    - Task Completion: customer/task-completion.md
+  - Features:
+    - Dashboard: features/dashboard.md
+    - Comments System: features/comments.md
+    - Document Generation: features/documents.md
+    - Resources: features/resources.md

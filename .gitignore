@@ -1,0 +1,55 @@
+# Environment files
+.env
+.env.*
+!.env.example
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+*.bak
+
+# Logs
+*.log
+logs/
+
+# Docker volumes
+postgres_data/
+.docker/
+
+# Temporary files
+*.tmp
+*.temp
+.cache/
+
+# Python cache (if running outside containers)
+__pycache__/
+*.pyc
+*.pyo
+
+# Node modules (if installing outside containers)
+node_modules/
+
+# Build artifacts
+dist/
+build/
+
+# Coverage reports
+htmlcov/
+coverage/
+.coverage
+.nyc_output/
+
+# Test artifacts
+.pytest_cache/
+.tox/
+
+# Uploads
+uploads/
+!uploads/.gitkeep

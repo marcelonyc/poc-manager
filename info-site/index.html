@@ -1,0 +1,622 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description"
+        content="POC Manager - The ultimate platform for managing Proof of Concept projects with customers. Track success criteria, collaborate seamlessly, and close deals faster.">
+    <title>POC Manager - Streamline Your Proof of Concept Process</title>
+
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Custom Styles -->
+    <link rel="stylesheet" href="assets/style.css">
+
+    <!-- Configuration -->
+    <script src="config.js"></script>
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml"
+        href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📊</text></svg>">
+</head>
+
+<body class="antialiased bg-gray-50">
+
+    <!-- Navigation -->
+    <nav class="bg-white shadow-sm fixed w-full top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+                <div class="flex items-center">
+                    <span class="text-2xl font-bold text-indigo-600">📊 POC Manager</span>
+                </div>
+                <div class="hidden md:flex items-center space-x-8">
+                    <a href="#features" class="text-gray-700 hover:text-indigo-600 transition">Features</a>
+                    <a href="#how-it-works" class="text-gray-700 hover:text-indigo-600 transition">How It Works</a>
+                    <a href="#benefits" class="text-gray-700 hover:text-indigo-600 transition">Benefits</a>
+                    <button onclick="requestDemo()"
+                        class="bg-indigo-600 text-white px-6 py-2 rounded-lg hover:bg-indigo-700 transition">
+                        Start Free Demo
+                    </button>
+                </div>
+                <button class="md:hidden text-gray-700" onclick="toggleMobileMenu()">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M4 6h16M4 12h16M4 18h16"></path>
+                    </svg>
+                </button>
+            </div>
+        </div>
+
+        <!-- Mobile Menu -->
+        <div id="mobile-menu" class="hidden md:hidden bg-white border-t">
+            <div class="px-4 py-3 space-y-3">
+                <a href="#features" class="block text-gray-700 hover:text-indigo-600">Features</a>
+                <a href="#how-it-works" class="block text-gray-700 hover:text-indigo-600">How It Works</a>
+                <a href="#benefits" class="block text-gray-700 hover:text-indigo-600">Benefits</a>
+                <button onclick="requestDemo()"
+                    class="w-full bg-indigo-600 text-white px-6 py-2 rounded-lg hover:bg-indigo-700">
+                    Start Free Demo
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="pt-24 pb-16 bg-gradient-to-br from-indigo-50 via-white to-purple-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="grid md:grid-cols-2 gap-12 items-center">
+                <div>
+                    <h1 class="text-5xl font-bold text-gray-900 mb-6 leading-tight">
+                        Transform Your <span class="text-indigo-600">POC Process</span> Into Revenue
+                    </h1>
+                    <p class="text-xl text-gray-600 mb-8">
+                        Stop losing deals due to disorganized POCs. POC Manager helps sales engineers and customers
+                        collaborate seamlessly, track success criteria, and close deals faster.
+                    </p>
+                    <div class="flex flex-col sm:flex-row gap-4">
+                        <button onclick="requestDemo()"
+                            class="bg-indigo-600 text-white px-8 py-4 rounded-lg text-lg font-semibold hover:bg-indigo-700 transition shadow-lg hover:shadow-xl">
+                            Start Free Demo
+                        </button>
+                        <button onclick="scrollToSection('how-it-works')"
+                            class="bg-white text-indigo-600 px-8 py-4 rounded-lg text-lg font-semibold hover:bg-gray-50 transition border-2 border-indigo-600">
+                            See How It Works
+                        </button>
+                    </div>
+                    <div class="mt-8 flex items-center gap-6 text-sm text-gray-600">
+                        <div class="flex items-center">
+                            <svg class="w-5 h-5 text-green-500 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd"
+                                    d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                                    clip-rule="evenodd"></path>
+                            </svg>
+                            2-minute setup
+                        </div>
+                    </div>
+                </div>
+                <div class="relative">
+                    <div class="bg-white rounded-xl shadow-2xl p-2">
+                        <img src="images/dashboard-screenshot.png" alt="POC Manager Dashboard" class="rounded-lg w-full"
+                            onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 800 600%22%3E%3Crect fill=%22%23f3f4f6%22 width=%22800%22 height=%22600%22/%3E%3Ctext x=%2250%25%22 y=%2250%25%22 dominant-baseline=%22middle%22 text-anchor=%22middle%22 font-family=%22Arial%22 font-size=%2224%22 fill=%22%236b7280%22%3EDashboard Screenshot%3C/text%3E%3C/svg%3E'">
+                    </div>
+                    <!-- Floating Stats -->
+                    <div class="absolute -bottom-6 -left-6 bg-white rounded-lg shadow-lg p-4">
+                        <div class="text-3xl font-bold text-indigo-600">87%</div>
+                        <div class="text-sm text-gray-600">Faster POC Completion</div>
+                    </div>
+                    <div class="absolute -top-6 -right-6 bg-white rounded-lg shadow-lg p-4">
+                        <div class="text-3xl font-bold text-green-600">2.3x</div>
+                        <div class="text-sm text-gray-600">Higher Win Rate</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section id="features" class="py-20 bg-white">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-16">
+                <h2 class="text-4xl font-bold text-gray-900 mb-4">Everything You Need to Run Successful POCs</h2>
+                <p class="text-xl text-gray-600 max-w-3xl mx-auto">
+                    Built for sales engineers and designed for customer success
+                </p>
+            </div>
+
+            <div class="grid md:grid-cols-3 gap-8">
+                <div
+                    class="bg-gradient-to-br from-indigo-50 to-white p-8 rounded-xl shadow-lg hover:shadow-2xl transition">
+                    <div class="bg-indigo-600 w-12 h-12 rounded-lg flex items-center justify-center mb-4">
+                        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4">
+                            </path>
+                        </svg>
+                    </div>
+                    <h3 class="text-xl font-bold text-gray-900 mb-3">Task Management</h3>
+                    <p class="text-gray-600 mb-4">
+                        Create reusable task templates, organize them into groups, and track progress with ease.
+                        Customers can mark tasks complete and provide feedback.
+                    </p>
+                    <ul class="space-y-2 text-sm text-gray-600">
+                        <li class="flex items-start">
+                            <svg class="w-5 h-5 text-green-500 mr-2 flex-shrink-0" fill="currentColor"
+                                viewBox="0 0 20 20">
+                                <path fill-rule="evenodd"
+                                    d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                                    clip-rule="evenodd"></path>
+                            </svg>
+                            Drag-and-drop task ordering
+                        </li>
+                        <li class="flex items-start">
+                            <svg class="w-5 h-5 text-green-500 mr-2 flex-shrink-0" fill="currentColor"
+                                viewBox="0 0 20 20">
+                                <path fill-rule="evenodd"
+                                    d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                                    clip-rule="evenodd"></path>
+                            </svg>
+                            Reusable templates library
+                        </li>
+                        <li class="flex items-start">
+                            <svg class="w-5 h-5 text-green-500 mr-2 flex-shrink-0" fill="currentColor"
+                                viewBox="0 0 20 20">
+                                <path fill-rule="evenodd"
+                                    d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                                    clip-rule="evenodd"></path>
+                            </svg>
+                            Customer feedback collection
+                        </li>
+                    </ul>
+                </div>
+
+                <div
+                    class="bg-gradient-to-br from-purple-50 to-white p-8 rounded-xl shadow-lg hover:shadow-2xl transition">
+                    <div class="bg-purple-600 w-12 h-12 rounded-lg flex items-center justify-center mb-4">
+                        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                    </div>
+                    <h3 class="text-xl font-bold text-gray-900 mb-3">Success Criteria Tracking</h3>
+                    <p class="text-gray-600 mb-4">
+                        Define clear success metrics and track them throughout the POC. Ensure alignment
+                        with stakeholders and measure progress objectively.
+                    </p>
+                    <ul class="space-y-2 text-sm text-gray-600">
+                        <li class="flex items-start">
+                            <svg class="w-5 h-5 text-green-500 mr-2 flex-shrink-0" fill="currentColor"
+                                viewBox="0 0 20 20">
+                                <path fill-rule="evenodd"
+                                    d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                                    clip-rule="evenodd"></path>
+                            </svg>
+                            Link resources to criteria
+                        </li>
+                        <li class="flex items-start">
+                            <svg class="w-5 h-5 text-green-500 mr-2 flex-shrink-0" fill="currentColor"
+                                viewBox="0 0 20 20">
+                                <path fill-rule="evenodd"
+                                    d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                                    clip-rule="evenodd"></path>
+                            </svg>
+                            Real-time progress tracking
+                        </li>
+                        <li class="flex items-start">
+                            <svg class="w-5 h-5 text-green-500 mr-2 flex-shrink-0" fill="currentColor"
+                                viewBox="0 0 20 20">
+                                <path fill-rule="evenodd"
+                                    d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                                    clip-rule="evenodd"></path>
+                            </svg>
+                            Automated status updates
+                        </li>
+                    </ul>
+                </div>
+
+                <div
+                    class="bg-gradient-to-br from-green-50 to-white p-8 rounded-xl shadow-lg hover:shadow-2xl transition">
+                    <div class="bg-green-600 w-12 h-12 rounded-lg flex items-center justify-center mb-4">
+                        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M17 8h2a2 2 0 012 2v6a2 2 0 01-2 2h-2v4l-4-4H9a1.994 1.994 0 01-1.414-.586m0 0L11 14h4a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2v4l.586-.586z">
+                            </path>
+                        </svg>
+                    </div>
+                    <h3 class="text-xl font-bold text-gray-900 mb-3">Collaboration & Comments</h3>
+                    <p class="text-gray-600 mb-4">
+                        Keep everyone in sync with internal and external comments. Share updates,
+                        ask questions, and maintain a complete communication history.
+                    </p>
+                    <ul class="space-y-2 text-sm text-gray-600">
+                        <li class="flex items-start">
+                            <svg class="w-5 h-5 text-green-500 mr-2 flex-shrink-0" fill="currentColor"
+                                viewBox="0 0 20 20">
+                                <path fill-rule="evenodd"
+                                    d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                                    clip-rule="evenodd"></path>
+                            </svg>
+                            Internal & external threads
+                        </li>
+                        <li class="flex items-start">
+                            <svg class="w-5 h-5 text-green-500 mr-2 flex-shrink-0" fill="currentColor"
+                                viewBox="0 0 20 20">
+                                <path fill-rule="evenodd"
+                                    d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                                    clip-rule="evenodd"></path>
+                            </svg>
+                            @mentions and notifications
+                        </li>
+                        <li class="flex items-start">
+                            <svg class="w-5 h-5 text-green-500 mr-2 flex-shrink-0" fill="currentColor"
+                                viewBox="0 0 20 20">
+                                <path fill-rule="evenodd"
+                                    d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                                    clip-rule="evenodd"></path>
+                            </svg>
+                            Activity timeline
+                        </li>
+                    </ul>
+                </div>
+
+                <div
+                    class="bg-gradient-to-br from-blue-50 to-white p-8 rounded-xl shadow-lg hover:shadow-2xl transition">
+                    <div class="bg-blue-600 w-12 h-12 rounded-lg flex items-center justify-center mb-4">
+                        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10">
+                            </path>
+                        </svg>
+                    </div>
+                    <h3 class="text-xl font-bold text-gray-900 mb-3">Multi-Tenant Architecture</h3>
+                    <p class="text-gray-600 mb-4">
+                        Perfect for enterprises and service providers. Each tenant gets isolated data,
+                        custom branding, and independent configuration.
+                    </p>
+                    <ul class="space-y-2 text-sm text-gray-600">
+                        <li class="flex items-start">
+                            <svg class="w-5 h-5 text-green-500 mr-2 flex-shrink-0" fill="currentColor"
+                                viewBox="0 0 20 20">
+                                <path fill-rule="evenodd"
+                                    d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                                    clip-rule="evenodd"></path>
+                            </svg>
+                            Custom branding & logos
+                        </li>
+                        <li class="flex items-start">
+                            <svg class="w-5 h-5 text-green-500 mr-2 flex-shrink-0" fill="currentColor"
+                                viewBox="0 0 20 20">
+                                <path fill-rule="evenodd"
+                                    d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                                    clip-rule="evenodd"></path>
+                            </svg>
+                            Data isolation
+                        </li>
+                        <li class="flex items-start">
+                            <svg class="w-5 h-5 text-green-500 mr-2 flex-shrink-0" fill="currentColor"
+                                viewBox="0 0 20 20">
+                                <path fill-rule="evenodd"
+                                    d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                                    clip-rule="evenodd"></path>
+                            </svg>
+                            Independent settings
+                        </li>
+                    </ul>
+                </div>
+
+                <div
+                    class="bg-gradient-to-br from-yellow-50 to-white p-8 rounded-xl shadow-lg hover:shadow-2xl transition">
+                    <div class="bg-yellow-600 w-12 h-12 rounded-lg flex items-center justify-center mb-4">
+                        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                        </svg>
+                    </div>
+                    <h3 class="text-xl font-bold text-gray-900 mb-3">Powerful Integrations</h3>
+                    <p class="text-gray-600 mb-4">
+                        Connect with your existing tools. Sync with Slack, Jira, GitHub, and more.
+                        Automated notifications keep everyone informed.
+                    </p>
+                    <ul class="space-y-2 text-sm text-gray-600">
+                        <li class="flex items-start">
+                            <svg class="w-5 h-5 text-green-500 mr-2 flex-shrink-0" fill="currentColor"
+                                viewBox="0 0 20 20">
+                                <path fill-rule="evenodd"
+                                    d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                                    clip-rule="evenodd"></path>
+                            </svg>
+                            Slack notifications
+                        </li>
+                        <li class="flex items-start">
+                            <svg class="w-5 h-5 text-green-500 mr-2 flex-shrink-0" fill="currentColor"
+                                viewBox="0 0 20 20">
+                                <path fill-rule="evenodd"
+                                    d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                                    clip-rule="evenodd"></path>
+                            </svg>
+                            Jira issue sync
+                        </li>
+                        <li class="flex items-start">
+                            <svg class="w-5 h-5 text-green-500 mr-2 flex-shrink-0" fill="currentColor"
+                                viewBox="0 0 20 20">
+                                <path fill-rule="evenodd"
+                                    d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                                    clip-rule="evenodd"></path>
+                            </svg>
+                            Email automation
+                        </li>
+                    </ul>
+                </div>
+
+                <div
+                    class="bg-gradient-to-br from-red-50 to-white p-8 rounded-xl shadow-lg hover:shadow-2xl transition">
+                    <div class="bg-red-600 w-12 h-12 rounded-lg flex items-center justify-center mb-4">
+                        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z">
+                            </path>
+                        </svg>
+                    </div>
+                    <h3 class="text-xl font-bold text-gray-900 mb-3">Document Generation</h3>
+                    <p class="text-gray-600 mb-4">
+                        Generate professional POC reports and summaries in PDF, Word, or Markdown format.
+                        Perfect for executive summaries and documentation.
+                    </p>
+                    <ul class="space-y-2 text-sm text-gray-600">
+                        <li class="flex items-start">
+                            <svg class="w-5 h-5 text-green-500 mr-2 flex-shrink-0" fill="currentColor"
+                                viewBox="0 0 20 20">
+                                <path fill-rule="evenodd"
+                                    d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                                    clip-rule="evenodd"></path>
+                            </svg>
+                            PDF, Word, Markdown
+                        </li>
+                        <li class="flex items-start">
+                            <svg class="w-5 h-5 text-green-500 mr-2 flex-shrink-0" fill="currentColor"
+                                viewBox="0 0 20 20">
+                                <path fill-rule="evenodd"
+                                    d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                                    clip-rule="evenodd"></path>
+                            </svg>
+                            Custom templates
+                        </li>
+                        <li class="flex items-start">
+                            <svg class="w-5 h-5 text-green-500 mr-2 flex-shrink-0" fill="currentColor"
+                                viewBox="0 0 20 20">
+                                <path fill-rule="evenodd"
+                                    d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                                    clip-rule="evenodd"></path>
+                            </svg>
+                            Branded exports
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- How It Works Section -->
+    <section id="how-it-works" class="py-20 bg-gradient-to-br from-gray-50 to-white">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-16">
+                <h2 class="text-4xl font-bold text-gray-900 mb-4">Simple Yet Powerful Workflow</h2>
+                <p class="text-xl text-gray-600 max-w-3xl mx-auto">
+                    From onboarding to deal closure, POC Manager streamlines every step
+                </p>
+            </div>
+
+            <div class="grid md:grid-cols-4 gap-8 mb-12">
+                <div class="text-center">
+                    <div
+                        class="bg-indigo-600 text-white w-16 h-16 rounded-full flex items-center justify-center text-2xl font-bold mx-auto mb-4">
+                        1</div>
+                    <h3 class="text-xl font-bold text-gray-900 mb-2">Create POC</h3>
+                    <p class="text-gray-600">Set up your POC with tasks, success criteria, and timelines. Use templates
+                        to save time.</p>
+                </div>
+                <div class="text-center">
+                    <div
+                        class="bg-purple-600 text-white w-16 h-16 rounded-full flex items-center justify-center text-2xl font-bold mx-auto mb-4">
+                        2</div>
+                    <h3 class="text-xl font-bold text-gray-900 mb-2">Invite Customers</h3>
+                    <p class="text-gray-600">Send invitations to customer stakeholders. They get immediate access with
+                        no friction.</p>
+                </div>
+                <div class="text-center">
+                    <div
+                        class="bg-green-600 text-white w-16 h-16 rounded-full flex items-center justify-center text-2xl font-bold mx-auto mb-4">
+                        3</div>
+                    <h3 class="text-xl font-bold text-gray-900 mb-2">Collaborate</h3>
+                    <p class="text-gray-600">Track progress, share updates, and communicate in real-time. Everyone stays
+                        aligned.</p>
+                </div>
+                <div class="text-center">
+                    <div
+                        class="bg-yellow-600 text-white w-16 h-16 rounded-full flex items-center justify-center text-2xl font-bold mx-auto mb-4">
+                        4</div>
+                    <h3 class="text-xl font-bold text-gray-900 mb-2">Close Deals</h3>
+                    <p class="text-gray-600">Generate reports, prove value, and close with confidence. Faster sales
+                        cycles guaranteed.</p>
+                </div>
+            </div>
+
+            <!-- Flow Diagram -->
+            <div class="bg-white rounded-xl shadow-2xl p-8">
+                <div class="relative">
+                    <img src="images/workflow-diagram.png" alt="POC Workflow" class="w-full rounded-lg"
+                        onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 1200 400%22%3E%3Crect fill=%22%23f3f4f6%22 width=%221200%22 height=%22400%22/%3E%3Ctext x=%2250%25%22 y=%2250%25%22 dominant-baseline=%22middle%22 text-anchor=%22middle%22 font-family=%22Arial%22 font-size=%2224%22 fill=%22%236b7280%22%3EWorkflow Diagram%3C/text%3E%3C/svg%3E'">
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Benefits Section -->
+    <section id="benefits" class="py-20 bg-white">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-16">
+                <h2 class="text-4xl font-bold text-gray-900 mb-4">Why Track POCs Matter</h2>
+                <p class="text-xl text-gray-600 max-w-3xl mx-auto">
+                    Unorganized POCs cost you deals. Here's how POC Manager transforms your process
+                </p>
+            </div>
+
+            <div class="grid md:grid-cols-2 gap-12 items-center mb-16">
+                <div>
+                    <h3 class="text-3xl font-bold text-gray-900 mb-6">For Sales Engineers</h3>
+                    <div class="space-y-6">
+                        <div class="flex items-start">
+                            <div class="bg-indigo-100 rounded-lg p-3 mr-4">
+                                <svg class="w-6 h-6 text-indigo-600" fill="none" stroke="currentColor"
+                                    viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                                </svg>
+                            </div>
+                            <div>
+                                <h4 class="text-xl font-semibold text-gray-900 mb-2">Save 10+ Hours Per POC</h4>
+                                <p class="text-gray-600">Reuse templates, automate updates, and eliminate manual
+                                    tracking. Focus on what matters: customer success.</p>
+                            </div>
+                        </div>
+                        <div class="flex items-start">
+                            <div class="bg-indigo-100 rounded-lg p-3 mr-4">
+                                <svg class="w-6 h-6 text-indigo-600" fill="none" stroke="currentColor"
+                                    viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z">
+                                    </path>
+                                </svg>
+                            </div>
+                            <div>
+                                <h4 class="text-xl font-semibold text-gray-900 mb-2">Increase Win Rates</h4>
+                                <p class="text-gray-600">Clear tracking and communication lead to better-executed POCs
+                                    and higher close rates.</p>
+                            </div>
+                        </div>
+                        <div class="flex items-start">
+                            <div class="bg-indigo-100 rounded-lg p-3 mr-4">
+                                <svg class="w-6 h-6 text-indigo-600" fill="none" stroke="currentColor"
+                                    viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                            </div>
+                            <div>
+                                <h4 class="text-xl font-semibold text-gray-900 mb-2">Faster Sales Cycles</h4>
+                                <p class="text-gray-600">Reduce POC duration by 40% with organized workflows and
+                                    real-time visibility.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-white rounded-xl shadow-2xl p-2">
+                    <img src="images/sales-engineer-view.png" alt="Sales Engineer Dashboard" class="rounded-lg w-full"
+                        onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 800 600%22%3E%3Crect fill=%22%23f3f4f6%22 width=%22800%22 height=%22600%22/%3E%3Ctext x=%2250%25%22 y=%2250%25%22 dominant-baseline=%22middle%22 text-anchor=%22middle%22 font-family=%22Arial%22 font-size=%2224%22 fill=%22%236b7280%22%3ESales Engineer View%3C/text%3E%3C/svg%3E'">
+                </div>
+            </div>
+
+            <div class="grid md:grid-cols-2 gap-12 items-center">
+                <div class="order-2 md:order-1 bg-white rounded-xl shadow-2xl p-2">
+                    <img src="images/customer-view.png" alt="Customer Dashboard" class="rounded-lg w-full"
+                        onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 800 600%22%3E%3Crect fill=%22%23f3f4f6%22 width=%22800%22 height=%22600%22/%3E%3Ctext x=%2250%25%22 y=%2250%25%22 dominant-baseline=%22middle%22 text-anchor=%22middle%22 font-family=%22Arial%22 font-size=%2224%22 fill=%22%236b7280%22%3ECustomer View%3C/text%3E%3C/svg%3E'">
+                </div>
+                <div class="order-1 md:order-2">
+                    <h3 class="text-3xl font-bold text-gray-900 mb-6">For Customers</h3>
+                    <div class="space-y-6">
+                        <div class="flex items-start">
+                            <div class="bg-green-100 rounded-lg p-3 mr-4">
+                                <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor"
+                                    viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z">
+                                    </path>
+                                </svg>
+                            </div>
+                            <div>
+                                <h4 class="text-xl font-semibold text-gray-900 mb-2">Complete Visibility</h4>
+                                <p class="text-gray-600">Know exactly what's happening, what's next, and what success
+                                    looks like. No more guessing.</p>
+                            </div>
+                        </div>
+                        <div class="flex items-start">
+                            <div class="bg-green-100 rounded-lg p-3 mr-4">
+                                <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor"
+                                    viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z">
+                                    </path>
+                                </svg>
+                            </div>
+                            <div>
+                                <h4 class="text-xl font-semibold text-gray-900 mb-2">Seamless Communication</h4>
+                                <p class="text-gray-600">Centralized discussions keep everyone aligned. No more lost
+                                    emails or Slack threads.</p>
+                            </div>
+                        </div>
+                        <div class="flex items-start">
+                            <div class="bg-green-100 rounded-lg p-3 mr-4">
+                                <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor"
+                                    viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z">
+                                    </path>
+                                </svg>
+                            </div>
+                            <div>
+                                <h4 class="text-xl font-semibold text-gray-900 mb-2">Confident Decision Making</h4>
+                                <p class="text-gray-600">Objective success metrics and clear documentation help
+                                    stakeholders make informed decisions.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA Section -->
+    <section class="py-20 bg-gradient-to-r from-indigo-600 to-purple-600">
+        <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+            <h2 class="text-4xl font-bold text-white mb-8">Ready to Transform Your POC Process?</h2>
+            <div class="flex flex-col sm:flex-row gap-4 justify-center">
+                <button onclick="requestDemo()"
+                    class="bg-white text-indigo-600 px-8 py-4 rounded-lg text-lg font-semibold hover:bg-gray-100 transition shadow-xl">
+                    Start Free Demo Today
+                </button>
+            </div>
+            <p class="text-indigo-200 mt-6 text-sm">
+                2-minute setup
+            </p>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="bg-gray-900 text-gray-300 py-12">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="grid md:grid-cols-1 gap-8 mb-8">
+                <div>
+                    <h3 class="text-white text-lg font-bold mb-4">📊 POC Manager</h3>
+                    <p class="text-sm">
+                        The ultimate platform for managing Proof of Concept projects with customers.
+                    </p>
+                </div>
+            </div>
+            <div class="border-t border-gray-800 pt-8 flex flex-col md:flex-row justify-between items-center">
+                <p class="text-sm">© 2026 POC Manager. All rights reserved.</p>
+                <div class="flex space-x-6 mt-4 md:mt-0">
+                    <a href="#" class="hover:text-white transition">Privacy Policy</a>
+                    <a href="#" class="hover:text-white transition">Terms of Service</a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- JavaScript -->
+    <script src="assets/script.js"></script>
+</body>
+
+</html>
