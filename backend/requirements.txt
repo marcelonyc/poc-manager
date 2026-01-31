@@ -30,7 +30,7 @@ jira==3.6.0
 PyGithub==2.1.1
 
 # Image handling
-Pillow==10.2.0
+Pillow==10.3.0
 
 # Utilities
 pydantic==2.5.3
