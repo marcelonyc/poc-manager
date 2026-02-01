@@ -80,10 +80,10 @@ const DemoRequest: React.FC = () => {
             <div className="bg-white rounded-lg shadow-xl p-8 max-w-md w-full">
                 <div className="text-center mb-8">
                     <h2 className="text-3xl font-bold text-gray-900 mb-2">
-                        Request a Demo Account
+                        Setup a test Account
                     </h2>
                     <p className="text-gray-600">
-                        Start your free demo with full access to POC Manager
+                        Get a fully operational environment of POC Manager
                     </p>
                 </div>
 
@@ -181,7 +181,7 @@ const DemoRequest: React.FC = () => {
                         disabled={loading}
                         className="w-full bg-indigo-600 text-white py-2 px-4 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed font-medium"
                     >
-                        {loading ? 'Submitting...' : 'Request Demo Account'}
+                        {loading ? 'Submitting...' : 'Setup a test Account'}
                     </button>
                 </form>
 
