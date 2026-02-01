@@ -19,23 +19,31 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    # Create invitation status enum
-    op.execute("CREATE TYPE invitationstatus AS ENUM ('pending', 'accepted', 'expired', 'revoked')")
+    # Create invitation status enum (if it doesn't exist)
+    op.execute("""
+        DO $$
+        BEGIN
+            IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'invitationstatus') THEN
+                CREATE TYPE invitationstatus AS ENUM ('pending', 'accepted', 'expired', 'revoked');
+            END IF;
+        END
+        $$;
+    """)
     
-    # Create invitations table
-    op.create_table(
-        'invitations',
-        sa.Column('id', sa.Integer(), nullable=False),
-        sa.Column('email', sa.String(), nullable=False),
-        sa.Column('full_name', sa.String(), nullable=False),
-        sa.Column('token', sa.String(), nullable=False),
-        sa.Column('status', sa.Enum('pending', 'accepted', 'expired', 'revoked', name='invitationstatus'), nullable=False),
-        sa.Column('invited_by_email', sa.String(), nullable=False),
-        sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
-        sa.Column('expires_at', sa.DateTime(timezone=True), nullable=False),
-        sa.Column('accepted_at', sa.DateTime(timezone=True), nullable=True),
-        sa.PrimaryKeyConstraint('id')
-    )
+    # Create invitations table using raw SQL to reference existing enum type
+    op.execute("""
+        CREATE TABLE IF NOT EXISTS invitations (
+            id SERIAL PRIMARY KEY,
+            email VARCHAR NOT NULL,
+            full_name VARCHAR NOT NULL,
+            token VARCHAR NOT NULL UNIQUE,
+            status invitationstatus NOT NULL,
+            invited_by_email VARCHAR NOT NULL,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+            expires_at TIMESTAMPTZ NOT NULL,
+            accepted_at TIMESTAMPTZ
+        )
+    """)
     
     # Create indexes
     op.create_index(op.f('ix_invitations_id'), 'invitations', ['id'], unique=False)
