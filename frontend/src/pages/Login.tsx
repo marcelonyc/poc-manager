@@ -42,7 +42,7 @@ export default function Login() {
                         onClick={() => navigate('/demo/request')}
                         className="bg-indigo-600 text-white px-6 py-2 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 font-medium"
                     >
-                        Request Demo
+                        Setup a test Account
                     </button>
                 </div>
 
