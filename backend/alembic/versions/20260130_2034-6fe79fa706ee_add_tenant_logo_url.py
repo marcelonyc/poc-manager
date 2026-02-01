@@ -19,8 +19,19 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    # Add logo_url column to tenants table
-    op.add_column('tenants', sa.Column('logo_url', sa.String(), nullable=True))
+    # Add logo_url column to tenants table (if it doesn't exist)
+    op.execute("""
+        DO $$
+        BEGIN
+            IF NOT EXISTS (
+                SELECT 1 FROM information_schema.columns 
+                WHERE table_name = 'tenants' AND column_name = 'logo_url'
+            ) THEN
+                ALTER TABLE tenants ADD COLUMN logo_url VARCHAR;
+            END IF;
+        END
+        $$;
+    """)
 
 
 def downgrade() -> None:
