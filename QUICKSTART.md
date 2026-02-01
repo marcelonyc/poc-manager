@@ -245,7 +245,7 @@ lsof -i :5432
 
 ### Frontend Can't Connect to Backend
 ```bash
-# Check CORS settings in backend/.env
+# Check CORS settings in .env
 CORS_ORIGINS=http://localhost:3001
 
 # Restart backend

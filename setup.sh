@@ -10,10 +10,10 @@ if ! command -v docker &> /dev/null; then
 fi
 
 # Create .env file if it doesn't exist
-if [ ! -f backend/.env ]; then
-    echo "📝 Creating backend .env file..."
-    cp backend/.env.example backend/.env
-    echo "⚠️  Please edit backend/.env with your configuration before proceeding."
+if [ ! -f .env ]; then
+    echo "📝 Creating .env file..."
+    cp .env.example .env
+    echo "⚠️  Please edit .env with your configuration before proceeding."
     read -p "Press enter to continue..."
 fi
 

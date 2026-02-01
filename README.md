@@ -94,7 +94,7 @@ git clone <repository-url>
 cd poc-manager
 
 # Copy environment file
-cp backend/.env.example backend/.env
+cp .env.example .env
 
 # Start all services
 docker compose up -d
@@ -301,7 +301,7 @@ Once the backend is running, visit:
 
 ## 🌐 Environment Variables
 
-### Backend (.env)
+### Environment Configuration (.env)
 
 ```env
 # Database
