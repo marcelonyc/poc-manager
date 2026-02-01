@@ -7,6 +7,9 @@ class Settings(BaseSettings):
     """Application settings"""
     
     # Database
+    POSTGRES_USER: str = "postgres"
+    POSTGRES_PASSWORD: str = "postgres"
+    POSTGRES_DB: str = "poc_user"
     DATABASE_URL: str = "postgresql://postgres:postgres@localhost:5432/poc_manager"
     DATABASE_TEST_URL: str = "postgresql://postgres:postgres@localhost:5432/poc_manager_test"
     
