@@ -48,6 +48,7 @@ class Settings(BaseSettings):
     JIRA_DEFAULT_EMAIL: str = ""
     JIRA_DEFAULT_API_TOKEN: str = ""
     GITHUB_DEFAULT_TOKEN: str = ""
+    VITE_API_URL: str = "/api"
     
     class Config:
         env_file = ".env"
