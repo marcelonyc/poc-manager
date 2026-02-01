@@ -2,11 +2,7 @@ services:
   db:
     image: postgres:15-alpine
     env_file:
-    - ./.env
-    environment:
-      POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
-      POSTGRES_DB: ${POSTGRES_DB:-poc_manager}
+      - ./.env
     ports:
       - "5432:5432"
     volumes:
@@ -24,7 +20,7 @@ services:
     ports:
       - "8000:8000"
     env_file:
-    - ./.env
+      - ./.env
     depends_on:
       db:
         condition: service_healthy
