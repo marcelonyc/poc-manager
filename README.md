@@ -95,8 +95,12 @@ A comprehensive multi-tenant web application for managing Proof of Concept (POC)
 git clone <repository-url>
 cd poc-manager
 
-# Copy environment file
+# Copy environment files
 cp .env.example .env
+cp .env-vite.example .env-vite
+
+# Edit .env with your configuration (database, email, etc.)
+# Edit .env-vite with your frontend configuration (optional)
 
 # Start all services
 docker compose up -d
@@ -146,6 +150,10 @@ pip install -r requirements.txt
 # Copy and configure environment
 cp .env.example .env
 # Edit .env with your configuration
+
+# (Optional) Copy frontend-specific environment
+cp .env-vite.example .env-vite
+# Edit .env-vite if you need custom Vite configuration
 
 # Create database
 createdb poc_manager
@@ -333,11 +341,17 @@ DEFAULT_SALES_ENGINEER_LIMIT=50
 DEFAULT_CUSTOMER_LIMIT=500
 ```
 
-### Frontend (.env)
+### Frontend (.env-vite)
 
 ```env
-VITE_API_URL=http://localhost:8000
+# Additional allowed hosts for the development server
+VITE_ADDITIONAL_SERVER_ALLOWED_HOSTS=localhost
+
+# Backend API URL (used by Vite proxy)
+VITE_API_URL=/api
 ```
+
+**Note**: The `.env` file is also used by the frontend for backward compatibility. Vite-specific variables should be placed in `.env-vite`.
 
 ## 📦 Project Structure
 

@@ -17,6 +17,13 @@ if [ ! -f .env ]; then
     read -p "Press enter to continue..."
 fi
 
+# Create .env-vite file if it doesn't exist
+if [ ! -f .env-vite ]; then
+    echo "📝 Creating .env-vite file..."
+    cp .env-vite.example .env-vite
+    echo "✅ .env-vite file created for frontend configuration."
+fi
+
 # Start services
 echo "🐳 Starting Docker containers..."
 docker compose up -d

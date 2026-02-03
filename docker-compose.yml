@@ -38,9 +38,11 @@ services:
       - "3001:3001"
     env_file:
       - ./.env
+      - ./.env-vite
     volumes:
       - ./frontend:/app
       - /app/node_modules
+      - ./.env-vite:/app/.env-vite
     command: npm run dev -- --host
 
 volumes:

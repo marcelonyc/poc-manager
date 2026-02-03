@@ -40,6 +40,7 @@ source venv/bin/activate
 pip install -r requirements.txt
 cp .env.example .env
 # Edit .env with your database credentials
+cp .env-vite.example .env-vite  # Frontend Vite configuration
 createdb poc_manager
 alembic upgrade head
 uvicorn app.main:app --reload

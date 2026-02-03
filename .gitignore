@@ -2,6 +2,7 @@
 .env
 .env.*
 !.env.example
+!.env-vite.example
 
 # IDE
 .vscode/
@@ -53,3 +54,4 @@ coverage/
 # Uploads
 uploads/
 !uploads/.gitkeep
+.env-vite 
