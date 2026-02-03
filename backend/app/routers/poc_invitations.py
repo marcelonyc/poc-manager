@@ -99,30 +99,16 @@ async def create_poc_invitation(
     db.refresh(invitation)
     
     # Send invitation email in background
-    async def send_invitation_with_tracking():
-        try:
-            success = await send_poc_invitation_email(
-                recipient=invitation_data.email,
-                full_name=invitation_data.full_name,
-                poc_title=poc.title,
-                token=token,
-                invited_by_name=current_user.full_name,
-                personal_message=invitation_data.personal_message,
-                tenant=poc.tenant
-            )
-            
-            # Update invitation status based on email result
-            invitation.email_sent = success
-            if not success:
-                invitation.status = POCInvitationStatus.FAILED
-                invitation.email_error = "Failed to send email"
-            db.commit()
-        except Exception as e:
-            invitation.status = POCInvitationStatus.FAILED
-            invitation.email_error = str(e)
-            db.commit()
-    
-    background_tasks.add_task(send_invitation_with_tracking)
+    background_tasks.add_task(
+        send_poc_invitation_email,
+        recipient=invitation_data.email,
+        full_name=invitation_data.full_name,
+        poc_title=poc.title,
+        token=token,
+        invited_by_name=current_user.full_name,
+        personal_message=invitation_data.personal_message,
+        tenant=poc.tenant
+    )
     
     return invitation
 
@@ -207,29 +193,16 @@ async def resend_poc_invitation(
     db.refresh(invitation)
     
     # Send invitation email in background
-    async def send_invitation_with_tracking():
-        try:
-            success = await send_poc_invitation_email(
-                recipient=invitation.email,
-                full_name=invitation.full_name,
-                poc_title=poc.title,
-                token=invitation.token,
-                invited_by_name=invitation.inviter.full_name,
-                personal_message=invitation.personal_message,
-                tenant=poc.tenant
-            )
-            
-            invitation.email_sent = success
-            if not success:
-                invitation.status = POCInvitationStatus.FAILED
-                invitation.email_error = "Failed to send email"
-            db.commit()
-        except Exception as e:
-            invitation.status = POCInvitationStatus.FAILED
-            invitation.email_error = str(e)
-            db.commit()
-    
-    background_tasks.add_task(send_invitation_with_tracking)
+    background_tasks.add_task(
+        send_poc_invitation_email,
+        recipient=invitation.email,
+        full_name=invitation.full_name,
+        poc_title=poc.title,
+        token=invitation.token,
+        invited_by_name=invitation.inviter.full_name,
+        personal_message=invitation.personal_message,
+        tenant=poc.tenant
+    )
     
     return invitation
 

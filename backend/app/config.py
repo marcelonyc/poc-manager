@@ -52,6 +52,7 @@ class Settings(BaseSettings):
     JIRA_DEFAULT_API_TOKEN: str = ""
     GITHUB_DEFAULT_TOKEN: str = ""
     VITE_API_URL: str = "/api"
+    __VITE_ADDITIONAL_SERVER_ALLOWED_HOSTS: str = "localhost"
     
     class Config:
         env_file = ".env"

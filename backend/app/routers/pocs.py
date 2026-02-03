@@ -289,29 +289,16 @@ async def add_participant(
         db.refresh(invitation)
         
         # Send invitation email in background
-        async def send_invitation_with_tracking():
-            try:
-                success = await send_poc_invitation_email(
-                    recipient=participant_data.email,
-                    full_name=participant_data.full_name,
-                    poc_title=poc.title,
-                    token=token,
-                    invited_by_name=current_user.full_name,
-                    personal_message=None,
-                    tenant=poc.tenant
-                )
-                
-                invitation.email_sent = success
-                if not success:
-                    invitation.status = POCInvitationStatus.FAILED
-                    invitation.email_error = "Failed to send email"
-                db.commit()
-            except Exception as e:
-                invitation.status = POCInvitationStatus.FAILED
-                invitation.email_error = str(e)
-                db.commit()
-        
-        background_tasks.add_task(send_invitation_with_tracking)
+        background_tasks.add_task(
+            send_poc_invitation_email,
+            recipient=participant_data.email,
+            full_name=participant_data.full_name,
+            poc_title=poc.title,
+            token=token,
+            invited_by_name=current_user.full_name,
+            personal_message=None,
+            tenant=poc.tenant
+        )
         
         return {
             "message": "Invitation sent successfully",
