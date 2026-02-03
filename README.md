@@ -345,7 +345,7 @@ DEFAULT_CUSTOMER_LIMIT=500
 
 ```env
 # Additional allowed hosts for the development server
-VITE_ADDITIONAL_SERVER_ALLOWED_HOSTS=localhost
+__VITE_ADDITIONAL_SERVER_ALLOWED_HOSTS=localhost
 
 # Backend API URL (used by Vite proxy)
 VITE_API_URL=/api
