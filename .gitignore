@@ -54,4 +54,4 @@ coverage/
 # Uploads
 uploads/
 !uploads/.gitkeep
-.env-vite 
+.env-vite
