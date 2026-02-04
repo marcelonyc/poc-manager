@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useState, useEffect } from 'react'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { useAuthStore } from '../store/authStore'
 import { api } from '../lib/api'
 import toast from 'react-hot-toast'
@@ -9,7 +9,21 @@ export default function Login() {
     const [password, setPassword] = useState('')
     const [loading, setLoading] = useState(false)
     const navigate = useNavigate()
+    const location = useLocation()
     const login = useAuthStore((state) => state.login)
+
+    useEffect(() => {
+        // Check for message from redirect (e.g., after accepting invitation)
+        const state = location.state as { message?: string; email?: string }
+        if (state?.message) {
+            toast.success(state.message)
+            if (state.email) {
+                setEmail(state.email)
+            }
+            // Clear the state
+            navigate(location.pathname, { replace: true, state: {} })
+        }
+    }, [location])
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()

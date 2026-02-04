@@ -38,7 +38,7 @@ class POCInvitationResponse(BaseModel):
 class POCInvitationAccept(BaseModel):
     """Schema for accepting a POC invitation"""
     token: str
-    password: str  # For creating new account if user doesn't exist
+    password: Optional[str] = None  # Required only if user doesn't exist
 
 
 class POCInvitationToken(BaseModel):
@@ -51,3 +51,4 @@ class POCInvitationToken(BaseModel):
     invited_by_name: str
     expires_at: datetime
     personal_message: Optional[str]
+    user_exists: bool  # Whether user account already exists

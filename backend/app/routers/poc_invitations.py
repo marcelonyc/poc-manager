@@ -278,6 +278,9 @@ def validate_poc_invitation(
             detail="Invitation has expired",
         )
     
+    # Check if user already exists
+    user_exists = db.query(User).filter(User.email == invitation.email).first() is not None
+    
     return POCInvitationToken(
         poc_id=invitation.poc_id,
         poc_title=invitation.poc.title,
@@ -286,7 +289,8 @@ def validate_poc_invitation(
         is_customer=invitation.is_customer,
         invited_by_name=invitation.inviter.full_name,
         expires_at=invitation.expires_at,
-        personal_message=invitation.personal_message
+        personal_message=invitation.personal_message,
+        user_exists=user_exists
     )
 
 
@@ -322,6 +326,13 @@ def accept_poc_invitation(
     user = db.query(User).filter(User.email == invitation.email).first()
     
     if not user:
+        # New user - password is required
+        if not accept_data.password:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Password is required for new users",
+            )
+        
         # Create new user account
         poc = invitation.poc
         user = User(
@@ -334,6 +345,14 @@ def accept_poc_invitation(
         )
         db.add(user)
         db.flush()
+    else:
+        # Existing user - verify they're in the same tenant
+        poc = invitation.poc
+        if user.tenant_id != poc.tenant_id:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="User belongs to a different tenant",
+            )
     
     # Add user as POC participant
     participant = POCParticipant(
