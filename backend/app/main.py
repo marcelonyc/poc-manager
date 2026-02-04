@@ -1,10 +1,18 @@
 """Main FastAPI application"""
+import logging
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pathlib import Path
 from app.config import settings
 from app.routers import auth, tenants, users, pocs, tasks, poc_components, invitations, products, poc_invitations, password_reset, demo_request
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
 
 app = FastAPI(
     title="POC Manager API",

@@ -1,8 +1,11 @@
 """Email service"""
+import logging
 from fastapi_mail import FastMail, MessageSchema, ConnectionConfig
 from typing import List
 from app.config import settings
 from app.models.tenant import Tenant
+
+logger = logging.getLogger(__name__)
 
 
 def get_mail_config(tenant: Tenant = None) -> ConnectionConfig:
@@ -99,9 +102,10 @@ async def send_invitation_email(
         """
         
         await send_email([recipient], subject, body, tenant=None, html=True)
+        logger.info(f"Successfully sent platform admin invitation email to {recipient}")
     except Exception as e:
         # Log error but don't crash the background task
-        print(f"Failed to send invitation email to {recipient}: {str(e)}")
+        logger.error(f"Failed to send invitation email to {recipient}: {str(e)}", exc_info=True)
 
 
 async def send_user_invitation_email(
@@ -217,10 +221,63 @@ async def send_poc_invitation_email(
         """
         
         await send_email([recipient], subject, body, tenant, html=True)
+        logger.info(f"Successfully sent POC invitation email to {recipient} for POC: {poc_title}")
         return True
     except Exception as e:
-        print(f"Failed to send POC invitation email to {recipient}: {str(e)}")
+        error_msg = f"Failed to send POC invitation email to {recipient}: {str(e)}"
+        logger.error(error_msg, exc_info=True)
         return False
+
+
+async def send_poc_invitation_email_with_tracking(
+    invitation_id: int,
+    recipient: str,
+    full_name: str,
+    poc_title: str,
+    token: str,
+    invited_by_name: str,
+    personal_message: str = None,
+    tenant: Tenant = None
+):
+    """
+    Send POC invitation email and update the database with delivery status.
+    This wrapper function should be used in background tasks to ensure proper tracking.
+    """
+    from app.database import SessionLocal
+    from app.models.poc_invitation import POCInvitation, POCInvitationStatus
+    
+    # Send the email
+    success = await send_poc_invitation_email(
+        recipient=recipient,
+        full_name=full_name,
+        poc_title=poc_title,
+        token=token,
+        invited_by_name=invited_by_name,
+        personal_message=personal_message,
+        tenant=tenant
+    )
+    
+    # Update the invitation record
+    db = SessionLocal()
+    try:
+        invitation = db.query(POCInvitation).filter(POCInvitation.id == invitation_id).first()
+        if invitation:
+            invitation.email_sent = success
+            if success:
+                invitation.email_error = None
+                logger.info(f"Updated invitation {invitation_id} - email sent successfully")
+            else:
+                invitation.email_error = "Failed to send email - check logs for details"
+                invitation.status = POCInvitationStatus.FAILED
+                logger.error(f"Updated invitation {invitation_id} - marked as FAILED")
+            db.commit()
+        else:
+            logger.warning(f"Could not find invitation {invitation_id} to update email status")
+    except Exception as e:
+        logger.error(f"Failed to update invitation {invitation_id} email status: {str(e)}", exc_info=True)
+        db.rollback()
+    finally:
+        db.close()
 
 
 async def send_password_reset_email(
@@ -271,9 +328,11 @@ async def send_password_reset_email(
         """
         
         await send_email([recipient], subject, body, tenant, html=True)
+        logger.info(f"Successfully sent password reset email to {recipient}")
         return True
     except Exception as e:
-        print(f"Failed to send password reset email to {recipient}: {str(e)}")
+        error_msg = f"Failed to send password reset email to {recipient}: {str(e)}"
+        logger.error(error_msg, exc_info=True)
         return False
 
 
@@ -319,9 +378,11 @@ async def send_demo_verification_email(
         """
         
         await send_email([recipient], subject, body, None, html=True)
+        logger.info(f"Successfully sent demo verification email to {recipient}")
         return True
     except Exception as e:
-        print(f"Failed to send demo verification email to {recipient}: {str(e)}")
+        error_msg = f"Failed to send demo verification email to {recipient}: {str(e)}"
+        logger.error(error_msg, exc_info=True)
         return False
 
 
@@ -390,9 +451,11 @@ async def send_demo_welcome_email(
         """
         
         await send_email([recipient], subject, body, None, html=True)
+        logger.info(f"Successfully sent demo welcome email to {recipient}")
         return True
     except Exception as e:
-        print(f"Failed to send demo welcome email to {recipient}: {str(e)}")
+        error_msg = f"Failed to send demo welcome email to {recipient}: {str(e)}"
+        logger.error(error_msg, exc_info=True)
         return False
 
 
@@ -444,9 +507,11 @@ async def send_demo_conversion_request_email(
         """
         
         await send_email([admin_email], subject, body, None, html=True)
+        logger.info(f"Successfully sent demo conversion request email to {admin_email} for tenant {tenant_name}")
         return True
     except Exception as e:
-        print(f"Failed to send demo conversion request email: {str(e)}")
+        error_msg = f"Failed to send demo conversion request email: {str(e)}"
+        logger.error(error_msg, exc_info=True)
         return False
 
 
@@ -511,7 +576,9 @@ async def send_existing_account_notification_email(
         """
         
         await send_email([recipient], subject, body, None, html=True)
+        logger.info(f"Successfully sent existing account notification email to {recipient}")
         return True
     except Exception as e:
-        print(f"Failed to send existing account notification email: {str(e)}")
+        error_msg = f"Failed to send existing account notification email: {str(e)}"
+        logger.error(error_msg, exc_info=True)
         return False

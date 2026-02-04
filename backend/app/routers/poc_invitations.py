@@ -16,7 +16,7 @@ from app.schemas.poc_invitation import (
     POCInvitationToken,
 )
 from app.auth import get_current_user, get_password_hash
-from app.services.email import send_poc_invitation_email
+from app.services.email import send_poc_invitation_email_with_tracking
 
 router = APIRouter(prefix="/pocs/{poc_id}/invitations", tags=["POC Invitations"])
 
@@ -100,7 +100,8 @@ async def create_poc_invitation(
     
     # Send invitation email in background
     background_tasks.add_task(
-        send_poc_invitation_email,
+        send_poc_invitation_email_with_tracking,
+        invitation_id=invitation.id,
         recipient=invitation_data.email,
         full_name=invitation_data.full_name,
         poc_title=poc.title,
@@ -153,7 +154,7 @@ async def resend_poc_invitation(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """Resend a POC invitation (for expired or failed invitations)"""
+    """Resend a POC invitation (for pending, expired, or failed invitations)"""
     invitation = db.query(POCInvitation).filter(
         POCInvitation.id == invitation_id,
         POCInvitation.poc_id == poc_id
@@ -173,8 +174,8 @@ async def resend_poc_invitation(
             detail="Insufficient permissions",
         )
     
-    # Only allow resending for expired or failed invitations
-    if invitation.status not in [POCInvitationStatus.EXPIRED, POCInvitationStatus.FAILED]:
+    # Only allow resending for pending, expired or failed invitations
+    if invitation.status not in [POCInvitationStatus.PENDING, POCInvitationStatus.EXPIRED, POCInvitationStatus.FAILED]:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Cannot resend invitation with status: {invitation.status.value}",
@@ -194,7 +195,8 @@ async def resend_poc_invitation(
     
     # Send invitation email in background
     background_tasks.add_task(
-        send_poc_invitation_email,
+        send_poc_invitation_email_with_tracking,
+        invitation_id=invitation.id,
         recipient=invitation.email,
         full_name=invitation.full_name,
         poc_title=poc.title,

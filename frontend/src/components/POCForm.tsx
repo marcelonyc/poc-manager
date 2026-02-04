@@ -1538,7 +1538,7 @@ export default function POCForm({ pocId, initialData, onClose }: POCFormProps) {
                                                 )}
                                             </div>
                                             <div className="flex gap-2">
-                                                {(participant.status === 'expired' || participant.status === 'failed') && participant.invitation_id && (
+                                                {(participant.status === 'pending' || participant.status === 'expired' || participant.status === 'failed') && participant.invitation_id && (
                                                     <button
                                                         onClick={async () => {
                                                             try {
@@ -1550,8 +1550,29 @@ export default function POCForm({ pocId, initialData, onClose }: POCFormProps) {
                                                             }
                                                         }}
                                                         className="px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700"
+                                                        title="Resend invitation email"
                                                     >
                                                         Resend
+                                                    </button>
+                                                )}
+                                                {participant.user_id && (
+                                                    <button
+                                                        onClick={async () => {
+                                                            if (!window.confirm(`Are you sure you want to remove ${participant.full_name || participant.email} from this POC?`)) {
+                                                                return
+                                                            }
+                                                            try {
+                                                                await api.delete(`/pocs/${pocId}/participants/${participant.user_id}`)
+                                                                toast.success('Participant removed successfully')
+                                                                fetchPOCData()
+                                                            } catch (error: any) {
+                                                                toast.error(formatErrorMessage(error, 'Failed to remove participant'))
+                                                            }
+                                                        }}
+                                                        className="px-3 py-1 bg-red-600 text-white text-sm rounded hover:bg-red-700"
+                                                        title="Remove participant from POC"
+                                                    >
+                                                        Remove
                                                     </button>
                                                 )}
                                             </div>

@@ -14,7 +14,7 @@ from app.models.product import Product
 from app.models.poc_invitation import POCInvitation, POCInvitationStatus
 from app.schemas.poc import POCCreate, POCUpdate, POC as POCSchema, POCDetail, POCParticipantAdd
 from app.auth import require_sales_engineer, get_current_user, check_tenant_access
-from app.services.email import send_poc_invitation_email
+from app.services.email import send_poc_invitation_email_with_tracking
 from app.services.document_generator import DocumentGenerator
 from app.utils.demo_limits import check_demo_poc_limit
 
@@ -290,7 +290,8 @@ async def add_participant(
         
         # Send invitation email in background
         background_tasks.add_task(
-            send_poc_invitation_email,
+            send_poc_invitation_email_with_tracking,
+            invitation_id=invitation.id,
             recipient=participant_data.email,
             full_name=participant_data.full_name,
             poc_title=poc.title,
