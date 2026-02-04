@@ -18,7 +18,7 @@ def get_mail_config(tenant: Tenant = None) -> ConnectionConfig:
             MAIL_PORT=tenant.custom_mail_port,
             MAIL_SERVER=tenant.custom_mail_server,
             MAIL_STARTTLS=tenant.custom_mail_tls,
-            MAIL_SSL_TLS=False,
+            MAIL_SSL_TLS=not tenant.custom_mail_tls,
             USE_CREDENTIALS=True,
             VALIDATE_CERTS=True,
         )
