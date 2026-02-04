@@ -19,6 +19,7 @@ from app.auth import get_current_user, get_password_hash
 from app.services.email import send_poc_invitation_email_with_tracking
 
 router = APIRouter(prefix="/pocs/{poc_id}/invitations", tags=["POC Invitations"])
+public_router = APIRouter(prefix="/poc-invitations", tags=["POC Invitations - Public"])
 
 
 def generate_invitation_token() -> str:
@@ -250,7 +251,7 @@ def revoke_poc_invitation(
 
 # Public endpoints (no authentication required)
 
-@router.get("/public/validate/{token}", response_model=POCInvitationToken)
+@public_router.get("/validate/{token}", response_model=POCInvitationToken)
 def validate_poc_invitation(
     token: str,
     db: Session = Depends(get_db)
@@ -294,7 +295,7 @@ def validate_poc_invitation(
     )
 
 
-@router.post("/public/accept", status_code=status.HTTP_201_CREATED)
+@public_router.post("/accept", status_code=status.HTTP_201_CREATED)
 def accept_poc_invitation(
     accept_data: POCInvitationAccept,
     db: Session = Depends(get_db)

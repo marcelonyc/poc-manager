@@ -44,6 +44,7 @@ app.include_router(poc_components.router)
 app.include_router(invitations.router)
 app.include_router(products.router)
 app.include_router(poc_invitations.router)
+app.include_router(poc_invitations.public_router)
 app.include_router(password_reset.router)
 app.include_router(demo_request.router)
 

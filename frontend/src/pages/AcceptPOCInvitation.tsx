@@ -38,7 +38,7 @@ export default function AcceptPOCInvitation() {
 
     const validateToken = async () => {
         try {
-            const response = await api.get(`/pocs/public/validate/${token}`)
+            const response = await api.get(`/poc-invitations/validate/${token}`)
             setInvitationData(response.data)
         } catch (err: any) {
             setError(err.response?.data?.detail || 'Invalid or expired invitation')
@@ -72,7 +72,7 @@ export default function AcceptPOCInvitation() {
         setError('')
 
         try {
-            await api.post('/pocs/public/accept', {
+            await api.post('/poc-invitations/accept', {
                 token,
                 password: invitationData?.user_exists ? undefined : password
             })
