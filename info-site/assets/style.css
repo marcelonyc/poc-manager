@@ -386,3 +386,98 @@ button:focus {
     visibility: visible;
     opacity: 1;
 }
+
+/* Floating Help Bubble */
+.help-bubble {
+    position: fixed;
+    bottom: 2rem;
+    left: 2rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    z-index: 1000;
+}
+
+.help-bubble-item {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 3.5rem;
+    height: 3.5rem;
+    background: linear-gradient(135deg, #4f46e5 0%, #6366f1 100%);
+    border-radius: 50%;
+    color: white;
+    box-shadow: 0 4px 12px rgba(79, 70, 229, 0.4);
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+.help-bubble-item:hover {
+    transform: scale(1.1);
+    box-shadow: 0 6px 20px rgba(79, 70, 229, 0.6);
+    background: linear-gradient(135deg, #4338ca 0%, #4f46e5 100%);
+}
+
+.help-icon {
+    width: 1.75rem;
+    height: 1.75rem;
+}
+
+.help-bubble-tooltip {
+    position: absolute;
+    left: 4.5rem;
+    top: 50%;
+    transform: translateY(-50%);
+    background-color: #1f2937;
+    color: white;
+    padding: 0.5rem 1rem;
+    border-radius: 0.5rem;
+    font-size: 0.875rem;
+    white-space: nowrap;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.3s ease;
+    pointer-events: none;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.help-bubble-tooltip::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: -0.25rem;
+    transform: translateY(-50%) rotate(45deg);
+    width: 0.5rem;
+    height: 0.5rem;
+    background-color: #1f2937;
+}
+
+.help-bubble-item:hover .help-bubble-tooltip {
+    opacity: 1;
+    visibility: visible;
+    left: 5rem;
+}
+
+/* Responsive adjustments for mobile */
+@media (max-width: 640px) {
+    .help-bubble {
+        bottom: 1rem;
+        left: 1rem;
+    }
+
+    .help-bubble-item {
+        width: 3rem;
+        height: 3rem;
+    }
+
+    .help-icon {
+        width: 1.5rem;
+        height: 1.5rem;
+    }
+
+    .help-bubble-tooltip {
+        font-size: 0.75rem;
+        padding: 0.375rem 0.75rem;
+    }
+}
