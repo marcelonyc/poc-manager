@@ -2,7 +2,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks
 from sqlalchemy.orm import Session
 from typing import List
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import secrets
 
 from app.database import get_db
@@ -79,7 +79,7 @@ async def create_poc_invitation(
     
     # Create invitation with 24-hour expiry
     token = generate_invitation_token()
-    expires_at = datetime.utcnow() + timedelta(hours=24)
+    expires_at = datetime.now(timezone.utc) + timedelta(hours=24)
     
     invitation = POCInvitation(
         poc_id=poc_id,
@@ -184,12 +184,12 @@ async def resend_poc_invitation(
     
     # Generate new token and extend expiry
     invitation.token = generate_invitation_token()
-    invitation.expires_at = datetime.utcnow() + timedelta(hours=24)
+    invitation.expires_at = datetime.now(timezone.utc) + timedelta(hours=24)
     invitation.status = POCInvitationStatus.PENDING
     invitation.email_sent = False
     invitation.email_error = None
     invitation.resend_count += 1
-    invitation.last_resent_at = datetime.utcnow()
+    invitation.last_resent_at = datetime.now(timezone.utc)
     
     db.commit()
     db.refresh(invitation)
@@ -271,7 +271,7 @@ def validate_poc_invitation(
             detail=f"Invitation is {invitation.status.value}",
         )
     
-    if invitation.expires_at < datetime.utcnow():
+    if invitation.expires_at < datetime.now(timezone.utc):
         invitation.status = POCInvitationStatus.EXPIRED
         db.commit()
         raise HTTPException(
@@ -315,7 +315,7 @@ def accept_poc_invitation(
             detail=f"Invitation is {invitation.status.value}",
         )
     
-    if invitation.expires_at < datetime.utcnow():
+    if invitation.expires_at < datetime.now(timezone.utc):
         invitation.status = POCInvitationStatus.EXPIRED
         db.commit()
         raise HTTPException(
@@ -366,7 +366,7 @@ def accept_poc_invitation(
     
     # Mark invitation as accepted
     invitation.status = POCInvitationStatus.ACCEPTED
-    invitation.accepted_at = datetime.utcnow()
+    invitation.accepted_at = datetime.now(timezone.utc)
     
     db.commit()
     
