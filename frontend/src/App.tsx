@@ -20,40 +20,44 @@ import PlatformAdminInvitations from './pages/PlatformAdminInvitations'
 import AcceptInvitation from './pages/AcceptInvitation'
 import AcceptPOCInvitation from './pages/AcceptPOCInvitation'
 import Layout from './components/Layout'
+import HelpBubble from './components/HelpBubble'
 
 function App() {
     const { isAuthenticated, user } = useAuthStore()
     const isCustomer = user?.role === 'customer'
 
     return (
-        <Routes>
-            <Route path="/login" element={<Login />} />
-            <Route path="/forgot-password" element={<ForgotPassword />} />
-            <Route path="/reset-password" element={<ResetPassword />} />
-            <Route path="/demo/request" element={<DemoRequest />} />
-            <Route path="/verify-demo-email" element={<VerifyDemoEmail />} />
-            <Route path="/demo/set-password" element={<SetDemoPassword />} />
-            <Route path="/accept-invitation" element={<AcceptInvitation />} />
-            <Route path="/poc-invitation" element={<AcceptPOCInvitation />} />
+        <>
+            <Routes>
+                <Route path="/login" element={<Login />} />
+                <Route path="/forgot-password" element={<ForgotPassword />} />
+                <Route path="/reset-password" element={<ResetPassword />} />
+                <Route path="/demo/request" element={<DemoRequest />} />
+                <Route path="/verify-demo-email" element={<VerifyDemoEmail />} />
+                <Route path="/demo/set-password" element={<SetDemoPassword />} />
+                <Route path="/accept-invitation" element={<AcceptInvitation />} />
+                <Route path="/poc-invitation" element={<AcceptPOCInvitation />} />
 
-            {isAuthenticated ? (
-                <Route path="/" element={<Layout />}>
-                    <Route index element={isCustomer ? <Navigate to="/pocs" replace /> : <Dashboard />} />
-                    <Route path="pocs" element={<POCList />} />
-                    <Route path="pocs/:id" element={<POCDetail />} />
-                    <Route path="templates" element={<TaskTemplates />} />
-                    <Route path="tenants" element={<Tenants />} />
-                    <Route path="users" element={<Users />} />
-                    <Route path="products" element={<Products />} />
-                    <Route path="settings" element={<TenantSettings />} />
-                    <Route path="invitations" element={<PlatformAdminInvitations />} />
-                    <Route path="demo-requests" element={<DemoRequests />} />
-                    <Route path="admin/demo-conversions/:requestId" element={<DemoConversionApproval />} />
-                </Route>
-            ) : (
-                <Route path="*" element={<Navigate to="/login" replace />} />
-            )}
-        </Routes>
+                {isAuthenticated ? (
+                    <Route path="/" element={<Layout />}>
+                        <Route index element={isCustomer ? <Navigate to="/pocs" replace /> : <Dashboard />} />
+                        <Route path="pocs" element={<POCList />} />
+                        <Route path="pocs/:id" element={<POCDetail />} />
+                        <Route path="templates" element={<TaskTemplates />} />
+                        <Route path="tenants" element={<Tenants />} />
+                        <Route path="users" element={<Users />} />
+                        <Route path="products" element={<Products />} />
+                        <Route path="settings" element={<TenantSettings />} />
+                        <Route path="invitations" element={<PlatformAdminInvitations />} />
+                        <Route path="demo-requests" element={<DemoRequests />} />
+                        <Route path="admin/demo-conversions/:requestId" element={<DemoConversionApproval />} />
+                    </Route>
+                ) : (
+                    <Route path="*" element={<Navigate to="/login" replace />} />
+                )}
+            </Routes>
+            <HelpBubble />
+        </>
     )
 }
 
