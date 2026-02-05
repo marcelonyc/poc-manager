@@ -1,5 +1,5 @@
 ---
-name: Question
+name: SaaS Question
 about: Ask a question about POC Manager
 title: '[QUESTION] '
 labels: question
