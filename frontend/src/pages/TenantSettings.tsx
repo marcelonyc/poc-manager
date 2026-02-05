@@ -49,6 +49,10 @@ export default function TenantSettings() {
     const [conversionReason, setConversionReason] = useState('')
     const [requestingConversion, setRequestingConversion] = useState(false)
 
+    // Test email
+    const [testEmailAddress, setTestEmailAddress] = useState('')
+    const [sendingTestEmail, setSendingTestEmail] = useState(false)
+
     useEffect(() => {
         if (user?.tenant_id) {
             fetchTenantSettings()
@@ -225,6 +229,25 @@ export default function TenantSettings() {
             setError(err.response?.data?.detail || 'Failed to submit conversion request')
         } finally {
             setRequestingConversion(false)
+        }
+    }
+
+    const handleSendTestEmail = async (e: React.FormEvent) => {
+        e.preventDefault()
+        setSendingTestEmail(true)
+        setError('')
+        setSuccess('')
+
+        try {
+            const response = await api.post(`/tenants/${user?.tenant_id}/test-email`, {
+                recipient_email: testEmailAddress
+            })
+            setSuccess(response.data.message || 'Test email sent successfully!')
+            setTestEmailAddress('')
+        } catch (err: any) {
+            setError(err.response?.data?.detail || 'Failed to send test email')
+        } finally {
+            setSendingTestEmail(false)
         }
     }
 
@@ -567,6 +590,38 @@ export default function TenantSettings() {
                                 </button>
                             </div>
                         </form>
+
+                        {/* Test Email Section */}
+                        {tenant.has_custom_mail_config && (
+                            <div className="mt-6 pt-6 border-t">
+                                <h3 className="text-lg font-semibold mb-4">Test Email Configuration</h3>
+                                <p className="text-sm text-gray-600 mb-4">
+                                    Send a test email to verify your SMTP configuration is working correctly.
+                                </p>
+                                <form onSubmit={handleSendTestEmail} className="flex items-end gap-4">
+                                    <div className="flex-1">
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                                            Recipient Email
+                                        </label>
+                                        <input
+                                            type="email"
+                                            value={testEmailAddress}
+                                            onChange={(e) => setTestEmailAddress(e.target.value)}
+                                            required
+                                            placeholder="test@example.com"
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                                        />
+                                    </div>
+                                    <button
+                                        type="submit"
+                                        disabled={sendingTestEmail}
+                                        className="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 disabled:bg-gray-400 whitespace-nowrap"
+                                    >
+                                        {sendingTestEmail ? 'Sending...' : 'Send Test Email'}
+                                    </button>
+                                </form>
+                            </div>
+                        )}
                     </div>
 
                     {/* Demo Account Conversion Section */}

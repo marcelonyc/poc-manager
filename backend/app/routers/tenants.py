@@ -8,9 +8,10 @@ from pathlib import Path
 from app.database import get_db
 from app.models.user import User, UserRole
 from app.models.tenant import Tenant
-from app.schemas.tenant import TenantCreate, TenantUpdate, Tenant as TenantSchema, TenantEmailConfig
+from app.schemas.tenant import TenantCreate, TenantUpdate, Tenant as TenantSchema, TenantEmailConfig, TestEmailRequest
 from app.auth import require_platform_admin, require_tenant_admin, get_current_user, get_password_hash
 from app.config import settings
+from app.services.email import send_email
 
 router = APIRouter(prefix="/tenants", tags=["Tenants"])
 
@@ -180,6 +181,65 @@ def update_email_config(
     
     db.commit()
     return {"message": "Email configuration updated successfully"}
+
+
+@router.post("/{tenant_id}/test-email")
+async def send_test_email(
+    tenant_id: int,
+    test_request: TestEmailRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_tenant_admin)
+):
+    """Send a test email to verify SMTP configuration"""
+    tenant = db.query(Tenant).filter(Tenant.id == tenant_id).first()
+    if not tenant:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Tenant not found",
+        )
+    
+    # Check access
+    if current_user.role != UserRole.PLATFORM_ADMIN and current_user.tenant_id != tenant_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access denied",
+        )
+    
+    # Prepare test email content
+    subject = "POC Manager - Test Email"
+    body = f"""
+    <html>
+        <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+            <h2 style="color: #4F46E5;">Email Configuration Test</h2>
+            <p>This is a test email from POC Manager.</p>
+            <p>If you received this email, your SMTP configuration is working correctly!</p>
+            <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
+            <p style="color: #666; font-size: 14px;">
+                <strong>Tenant:</strong> {tenant.name}<br>
+                <strong>Sent by:</strong> {current_user.full_name} ({current_user.email})<br>
+                <strong>Configuration:</strong> {"Custom SMTP" if tenant.custom_mail_server else "Platform Default"}
+            </p>
+        </body>
+    </html>
+    """
+    
+    try:
+        await send_email(
+            recipients=[test_request.recipient_email],
+            subject=subject,
+            body=body,
+            tenant=tenant,
+            html=True
+        )
+        return {
+            "success": True,
+            "message": f"Test email sent successfully to {test_request.recipient_email}"
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to send test email: {str(e)}"
+        )
 
 
 @router.post("/{tenant_id}/logo")

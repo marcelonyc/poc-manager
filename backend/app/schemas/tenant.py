@@ -53,6 +53,11 @@ class TenantEmailConfig(BaseModel):
     custom_mail_tls: Optional[bool] = True
 
 
+class TestEmailRequest(BaseModel):
+    """Schema for test email request"""
+    recipient_email: EmailStr
+
+
 class Tenant(TenantBase):
     """Schema for tenant response"""
     id: int
