@@ -1,5 +1,5 @@
 """POC router"""
-from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks
+from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks, UploadFile, File
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 from typing import List
@@ -7,6 +7,8 @@ from datetime import datetime, timedelta
 import secrets
 import os
 import tempfile
+import uuid
+from pathlib import Path
 from app.database import get_db
 from app.models.user import User, UserRole
 from app.models.poc import POC, POCStatus, POCParticipant
@@ -17,6 +19,9 @@ from app.auth import require_sales_engineer, get_current_user, check_tenant_acce
 from app.services.email import send_poc_invitation_email_with_tracking
 from app.services.document_generator import DocumentGenerator
 from app.utils.demo_limits import check_demo_poc_limit
+from app.config import Settings
+
+settings = Settings()
 
 router = APIRouter(prefix="/pocs", tags=["POCs"])
 
@@ -496,3 +501,111 @@ def generate_poc_document(
             "Content-Disposition": f"attachment; filename={filename}"
         }
     )
+
+
+@router.post("/{poc_id}/logo")
+async def upload_poc_logo(
+    poc_id: int,
+    logo: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_sales_engineer)
+):
+    """Upload customer logo for POC (Sales Engineer/Admin only)"""
+    poc = db.query(POC).filter(POC.id == poc_id).first()
+    if not poc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="POC not found",
+        )
+    
+    # Check tenant access
+    if current_user.role not in [UserRole.PLATFORM_ADMIN] and current_user.tenant_id != poc.tenant_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access denied",
+        )
+    
+    # Validate file type
+    allowed_types = ["image/jpeg", "image/jpg", "image/png", "image/gif", "image/webp"]
+    if logo.content_type not in allowed_types:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid file type. Allowed: JPEG, PNG, GIF, WebP",
+        )
+    
+    # Validate file size (max 2MB for logo)
+    content = await logo.read()
+    if len(content) > 2 * 1024 * 1024:  # 2MB
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="File too large. Maximum size: 2MB",
+        )
+    
+    # Create uploads directory if it doesn't exist
+    upload_dir = Path(settings.UPLOAD_DIR) / "poc_logos"
+    upload_dir.mkdir(parents=True, exist_ok=True)
+    
+    # Generate unique filename
+    file_ext = logo.filename.split('.')[-1] if '.' in logo.filename else 'png'
+    filename = f"poc_{poc.id}_{uuid.uuid4().hex[:8]}.{file_ext}"
+    file_path = upload_dir / filename
+    
+    # Save file
+    with open(file_path, "wb") as f:
+        f.write(content)
+    
+    # Delete old logo if exists
+    if poc.customer_logo_url:
+        old_path = Path(settings.UPLOAD_DIR) / poc.customer_logo_url.lstrip('/')
+        if old_path.exists():
+            old_path.unlink()
+    
+    # Update POC logo URL
+    poc.customer_logo_url = f"/uploads/poc_logos/{filename}"
+    db.commit()
+    
+    return {
+        "message": "Customer logo uploaded successfully",
+        "logo_url": poc.customer_logo_url
+    }
+
+
+@router.delete("/{poc_id}/logo")
+def delete_poc_logo(
+    poc_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_sales_engineer)
+):
+    """Delete customer logo from POC (Sales Engineer/Admin only)"""
+    poc = db.query(POC).filter(POC.id == poc_id).first()
+    if not poc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="POC not found",
+        )
+    
+    # Check tenant access
+    if current_user.role not in [UserRole.PLATFORM_ADMIN] and current_user.tenant_id != poc.tenant_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access denied",
+        )
+    
+    if not poc.customer_logo_url:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No logo found",
+        )
+    
+    # Delete file
+    file_path = Path(settings.UPLOAD_DIR) / poc.customer_logo_url.lstrip('/')
+    if file_path.exists():
+        file_path.unlink()
+    
+    # Clear logo URL
+    poc.customer_logo_url = None
+    db.commit()
+    
+    return {
+        "message": "Customer logo deleted successfully"
+    }

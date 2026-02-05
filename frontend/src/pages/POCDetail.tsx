@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { api } from '../lib/api'
+import { api, API_URL } from '../lib/api'
 import toast from 'react-hot-toast'
 import { useAuthStore } from '../store/authStore'
 import POCForm from '../components/POCForm'
@@ -91,9 +91,18 @@ export default function POCDetail() {
             <div className="bg-white rounded-lg shadow-md">
                 <div className="border-b border-gray-200 px-6 py-4">
                     <div className="flex justify-between items-center">
-                        <div>
-                            <h1 className="text-3xl font-bold text-gray-900">{poc.title}</h1>
-                            <p className="text-gray-600 mt-1">{poc.customer_company_name}</p>
+                        <div className="flex items-center gap-4">
+                            {poc.customer_logo_url && (
+                                <img
+                                    src={`${API_URL}${poc.customer_logo_url}`}
+                                    alt={poc.customer_company_name}
+                                    className="h-16 w-16 object-contain"
+                                />
+                            )}
+                            <div>
+                                <h1 className="text-3xl font-bold text-gray-900">{poc.title}</h1>
+                                <p className="text-gray-600 mt-1">{poc.customer_company_name}</p>
+                            </div>
                         </div>
                         <div className="flex gap-2">
                             {!isCustomer && (

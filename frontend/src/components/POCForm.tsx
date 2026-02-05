@@ -4,6 +4,7 @@ import toast from 'react-hot-toast'
 import { useAuthStore } from '../store/authStore'
 import { useNavigate } from 'react-router-dom'
 import CommentsModal from './CommentsModal'
+import LogoUpload from './LogoUpload'
 
 interface Product {
     id: number
@@ -92,6 +93,9 @@ export default function POCForm({ pocId, initialData, onClose }: POCFormProps) {
         end_date: '',
         product_ids: []
     })
+
+    // Customer Logo
+    const [customerLogoUrl, setCustomerLogoUrl] = useState<string | null>(null)
 
     // Success Criteria
     const [successCriteria, setSuccessCriteria] = useState<SuccessCriteria[]>([])
@@ -248,6 +252,7 @@ export default function POCForm({ pocId, initialData, onClose }: POCFormProps) {
                 end_date: poc.end_date || '',
                 product_ids: poc.products?.map((p: any) => p.id) || []
             })
+            setCustomerLogoUrl(poc.customer_logo_url || null)
             setSuccessCriteria(criteriaResponse.data || [])
             setParticipants(participantsResponse.data || [])
             setResources(resourcesResponse.data || [])
@@ -861,6 +866,19 @@ export default function POCForm({ pocId, initialData, onClose }: POCFormProps) {
                                 placeholder="e.g., Acme Corporation"
                             />
                         </div>
+
+                        {/* Customer Logo Upload - Only show if POC is created */}
+                        {pocId && (
+                            <LogoUpload
+                                currentLogoUrl={customerLogoUrl}
+                                uploadEndpoint={`/pocs/${pocId}/logo`}
+                                deleteEndpoint={`/pocs/${pocId}/logo`}
+                                label="Customer Logo"
+                                description="Upload the customer's logo to include in generated documents (max 2MB, JPEG/PNG/GIF/WebP)"
+                                onUploadSuccess={(logoUrl) => setCustomerLogoUrl(logoUrl)}
+                                onDelete={() => setCustomerLogoUrl(null)}
+                            />
+                        )}
 
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">

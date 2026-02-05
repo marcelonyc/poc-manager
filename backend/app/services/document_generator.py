@@ -2,8 +2,9 @@
 from reportlab.lib.pagesizes import letter
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import inch
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, PageBreak
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, PageBreak, Image
 from reportlab.lib import colors
+from reportlab.lib.enums import TA_CENTER
 from docx import Document
 from docx.shared import Inches, Pt, RGBColor
 from docx.enum.text import WD_PARAGRAPH_ALIGNMENT
@@ -12,6 +13,8 @@ from datetime import datetime
 from typing import Optional
 from sqlalchemy.orm import Session
 from app.models.poc import POC
+from pathlib import Path
+import os
 
 
 class DocumentGenerator:
@@ -26,6 +29,31 @@ class DocumentGenerator:
         doc = SimpleDocTemplate(output_path, pagesize=letter)
         styles = getSampleStyleSheet()
         story = []
+        
+        # Add customer logo if available
+        if self.poc.customer_logo_url:
+            logo_path = self._get_logo_path(self.poc.customer_logo_url)
+            if logo_path and os.path.exists(logo_path):
+                try:
+                    # Add logo centered at top
+                    logo = Image(logo_path, width=2*inch, height=2*inch, kind='proportional')
+                    logo.hAlign = 'CENTER'
+                    story.append(logo)
+                    story.append(Spacer(1, 0.1 * inch))
+                except Exception:
+                    pass  # Skip logo if there's an error loading it
+        
+        # Customer name centered below logo
+        customer_style = ParagraphStyle(
+            'CustomerName',
+            parent=styles['Heading1'],
+            fontSize=18,
+            textColor=colors.HexColor('#333333'),
+            alignment=TA_CENTER,
+            spaceAfter=20,
+        )
+        story.append(Paragraph(self.poc.customer_company_name, customer_style))
+        story.append(Spacer(1, 0.2 * inch))
         
         # Title
         title_style = ParagraphStyle(
@@ -99,6 +127,30 @@ class DocumentGenerator:
         """Generate Word document"""
         doc = Document()
         
+        # Add customer logo if available
+        if self.poc.customer_logo_url:
+            logo_path = self._get_logo_path(self.poc.customer_logo_url)
+            if logo_path and os.path.exists(logo_path):
+                try:
+                    # Add logo centered at top
+                    logo_paragraph = doc.add_paragraph()
+                    logo_paragraph.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
+                    run = logo_paragraph.add_run()
+                    run.add_picture(logo_path, width=Inches(2))
+                except Exception:
+                    pass  # Skip logo if there's an error loading it
+        
+        # Customer name centered below logo
+        customer_para = doc.add_paragraph()
+        customer_para.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
+        customer_run = customer_para.add_run(self.poc.customer_company_name)
+        customer_run.font.size = Pt(18)
+        customer_run.font.bold = True
+        customer_run.font.color.rgb = RGBColor(51, 51, 51)
+        
+        # Add spacing
+        doc.add_paragraph()
+        
         # Title
         title = doc.add_heading(self.poc.title, 0)
         title.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
@@ -162,6 +214,18 @@ class DocumentGenerator:
         """Generate Markdown document"""
         md_content = []
         
+        # Add customer logo if available
+        if self.poc.customer_logo_url:
+            # In markdown, we'll reference the logo with a centered HTML image tag
+            md_content.append(f'<div align="center">')
+            md_content.append(f'<img src="{self.poc.customer_logo_url}" alt="Customer Logo" width="200"/>')
+            md_content.append(f'</div>\n')
+        
+        # Customer name centered
+        md_content.append(f'<div align="center">')
+        md_content.append(f'<h2>{self.poc.customer_company_name}</h2>')
+        md_content.append(f'</div>\n')
+        
         # Title
         md_content.append(f"# {self.poc.title}\n")
         
@@ -222,3 +286,20 @@ class DocumentGenerator:
             f.write('\n'.join(md_content))
         
         return output_path
+    
+    def _get_logo_path(self, logo_url: str) -> Optional[str]:
+        """Get the full file system path for a logo URL"""
+        if not logo_url:
+            return None
+        
+        # Remove leading slash and build path from upload directory
+        from app.config import Settings
+        settings = Settings()
+        relative_path = logo_url.lstrip('/')
+        
+        # Handle both /uploads/... and uploads/... formats
+        if relative_path.startswith('uploads/'):
+            relative_path = relative_path[8:]  # Remove 'uploads/' prefix
+        
+        logo_path = Path(settings.UPLOAD_DIR) / relative_path
+        return str(logo_path) if logo_path.exists() else None

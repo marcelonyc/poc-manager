@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { api } from '../lib/api'
+import { api, API_URL } from '../lib/api'
 import toast from 'react-hot-toast'
 import { useAuthStore } from '../store/authStore'
 import POCForm from '../components/POCForm'
@@ -10,6 +10,7 @@ interface POC {
     id: number
     title: string
     customer_company_name: string
+    customer_logo_url?: string | null
     status: string
     start_date: string
     end_date: string
@@ -123,7 +124,16 @@ export default function POCList() {
                                         <div className="text-sm font-medium text-gray-900">{poc.title}</div>
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap">
-                                        <div className="text-sm text-gray-500">{poc.customer_company_name}</div>
+                                        <div className="flex items-center gap-3">
+                                            {poc.customer_logo_url && (
+                                                <img
+                                                    src={`${API_URL}${poc.customer_logo_url}`}
+                                                    alt={poc.customer_company_name}
+                                                    className="h-8 w-8 object-contain rounded"
+                                                />
+                                            )}
+                                            <div className="text-sm text-gray-500">{poc.customer_company_name}</div>
+                                        </div>
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap">
                                         <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusBadgeClass(poc.status)}`}>
