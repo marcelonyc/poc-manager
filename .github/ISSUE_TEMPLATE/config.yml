@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: POC Manager Documentation
+    url: https://github.com/marcelonyc/poc-manager/tree/main/docs
+    about: Check out our comprehensive documentation
+  - name: Community Discussions
+    url: https://github.com/marcelonyc/poc-manager/discussions
+    about: Ask questions and share ideas with the community
