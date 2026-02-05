@@ -74,7 +74,7 @@ export default function HelpBubble() {
                 </span>
             </a>
             <a
-                href="https://github.com/marcelonyc/poc-manager/issues/new"
+                href="https://github.com/marcelonyc/poc-manager/issues/new?template=saas-question.md"
                 target="_blank"
                 rel="noopener noreferrer"
                 style={{
