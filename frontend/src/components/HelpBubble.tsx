@@ -13,6 +13,7 @@ export default function HelpBubble() {
         }}>
             <a
                 href="/docs"
+                target="_blank"
                 style={{
                     position: 'relative',
                     display: 'flex',
