@@ -47,7 +47,8 @@ class Tenant(Base):
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     
     # Relationships
-    users = relationship("User", back_populates="tenant")
+    users = relationship("User", back_populates="tenant")  # Deprecated, kept for migration
+    user_roles = relationship("UserTenantRole", back_populates="tenant", cascade="all, delete-orphan")
     pocs = relationship("POC", back_populates="tenant")
     tasks = relationship("Task", back_populates="tenant")
     task_groups = relationship("TaskGroup", back_populates="tenant")

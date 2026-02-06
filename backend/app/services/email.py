@@ -582,3 +582,58 @@ async def send_existing_account_notification_email(
         error_msg = f"Failed to send existing account notification email: {str(e)}"
         logger.error(error_msg, exc_info=True)
         return False
+
+
+async def send_tenant_invitation_email(
+    recipient: str,
+    tenant_name: str,
+    role: str,
+    token: str,
+    invited_by: str,
+):
+    """Send tenant invitation email to existing user"""
+    try:
+        from app.config import settings
+        frontend_url = getattr(settings, 'FRONTEND_URL', 'http://localhost:3001')
+        invitation_url = f"{frontend_url}/tenant-invitation?token={token}"
+        
+        subject = f"Invitation to Join {tenant_name}"
+        body = f"""
+        <html>
+            <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+                <h2 style="color: #4F46E5;">You've Been Invited to Join a Tenant!</h2>
+                <p>Hello,</p>
+                <p><strong>{invited_by}</strong> has invited you to join <strong>{tenant_name}</strong> as a <strong>{role}</strong>.</p>
+                <p>Since you already have a POC Manager account, you can accept this invitation to gain access to this tenant with the new role.</p>
+                <div style="background-color: #EEF2FF; padding: 15px; border-radius: 6px; margin: 20px 0;">
+                    <p style="margin: 5px 0;"><strong>Tenant:</strong> {tenant_name}</p>
+                    <p style="margin: 5px 0;"><strong>Role:</strong> {role}</p>
+                    <p style="margin: 5px 0;"><strong>Invited by:</strong> {invited_by}</p>
+                </div>
+                <div style="margin: 30px 0;">
+                    <a href="{invitation_url}" 
+                       style="background-color: #4F46E5; color: white; padding: 12px 24px; 
+                              text-decoration: none; border-radius: 6px; display: inline-block;">
+                        Accept Invitation
+                    </a>
+                </div>
+                <p style="color: #666; font-size: 14px;">
+                    Or copy and paste this link into your browser:<br>
+                    <a href="{invitation_url}">{invitation_url}</a>
+                </p>
+                <p style="color: #999; font-size: 12px; margin-top: 30px;">
+                    This invitation will expire in 7 days. You'll need to log in to accept this invitation.
+                </p>
+                <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
+                <p style="color: #666; font-size: 14px;">
+                    Best regards,<br>
+                    POC Manager Team
+                </p>
+            </body>
+        </html>
+        """
+        
+        await send_email([recipient], subject, body, tenant=None, html=True)
+        logger.info(f"Successfully sent tenant invitation email to {recipient}")
+    except Exception as e:
+        logger.error(f"Failed to send tenant invitation email to {recipient}: {str(e)}", exc_info=True)

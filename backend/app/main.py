@@ -5,7 +5,20 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pathlib import Path
 from app.config import settings
-from app.routers import auth, tenants, users, pocs, tasks, poc_components, invitations, products, poc_invitations, password_reset, demo_request
+from app.routers import (
+    auth, 
+    tenants, 
+    users, 
+    pocs, 
+    tasks, 
+    poc_components, 
+    invitations, 
+    products, 
+    poc_invitations, 
+    password_reset, 
+    demo_request,
+    tenant_invitations
+)
 
 # Configure logging
 logging.basicConfig(
@@ -42,6 +55,7 @@ app.include_router(pocs.router)
 app.include_router(tasks.router)
 app.include_router(poc_components.router)
 app.include_router(invitations.router)
+app.include_router(tenant_invitations.router)
 app.include_router(products.router)
 app.include_router(poc_invitations.router)
 app.include_router(poc_invitations.public_router)

@@ -24,8 +24,8 @@ def get_password_hash(password: str) -> str:
     return pwd_context.hash(password)
 
 
-def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
-    """Create a JWT access token"""
+def create_access_token(data: dict, expires_delta: Optional[timedelta] = None, tenant_id: Optional[int] = None) -> str:
+    """Create a JWT access token with optional tenant context"""
     to_encode = data.copy()
     if expires_delta:
         expire = datetime.utcnow() + expires_delta
@@ -33,6 +33,11 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
         expire = datetime.utcnow() + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     
     to_encode.update({"exp": expire})
+    
+    # Add tenant context if provided
+    if tenant_id is not None:
+        to_encode.update({"tenant_id": tenant_id})
+    
     encoded_jwt = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
     return encoded_jwt
 
@@ -54,7 +59,7 @@ async def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(security),
     db: Session = Depends(get_db)
 ) -> User:
-    """Get the current authenticated user"""
+    """Get the current authenticated user with tenant context"""
     token = credentials.credentials
     payload = decode_token(token)
     
@@ -92,13 +97,41 @@ async def get_current_user(
             detail="Account has been blocked. Please contact support.",
         )
     
+    # Store tenant context from token in user object for easy access
+    tenant_id = payload.get("tenant_id")
+    if tenant_id is not None:
+        # Set a dynamic attribute for current tenant context
+        setattr(user, '_current_tenant_id', tenant_id)
+        # Get the role for this tenant
+        role = user.get_role_for_tenant(tenant_id)
+        if role:
+            setattr(user, '_current_role', role)
+    
     return user
 
 
+def get_current_tenant_id(current_user: User = Depends(get_current_user)) -> Optional[int]:
+    """Extract current tenant ID from user context"""
+    return getattr(current_user, '_current_tenant_id', None)
+
+
+def get_current_role(current_user: User = Depends(get_current_user)) -> Optional[UserRole]:
+    """Extract current role from user context"""
+    return getattr(current_user, '_current_role', None)
+
+
 def require_role(*roles: UserRole):
-    """Dependency to require specific user roles"""
+    """Dependency to require specific user roles in current tenant context"""
     def role_checker(current_user: User = Depends(get_current_user)) -> User:
-        if current_user.role not in roles:
+        current_role = getattr(current_user, '_current_role', None)
+        if current_role is None:
+            # Fall back to checking any tenant role
+            if not any(current_user.has_role(role) for role in roles):
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail=f"Insufficient permissions. Required roles: {[r.value for r in roles]}",
+                )
+        elif current_role not in roles:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail=f"Insufficient permissions. Required roles: {[r.value for r in roles]}",
@@ -110,7 +143,8 @@ def require_role(*roles: UserRole):
 # Convenience dependencies for common role checks
 def require_platform_admin(current_user: User = Depends(get_current_user)) -> User:
     """Require platform admin role"""
-    if current_user.role != UserRole.PLATFORM_ADMIN:
+    current_role = getattr(current_user, '_current_role', None)
+    if current_role != UserRole.PLATFORM_ADMIN and not current_user.has_role(UserRole.PLATFORM_ADMIN):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Platform admin access required",
@@ -120,7 +154,17 @@ def require_platform_admin(current_user: User = Depends(get_current_user)) -> Us
 
 def require_tenant_admin(current_user: User = Depends(get_current_user)) -> User:
     """Require tenant admin role or higher"""
-    if current_user.role not in [UserRole.PLATFORM_ADMIN, UserRole.TENANT_ADMIN]:
+    current_role = getattr(current_user, '_current_role', None)
+    allowed_roles = [UserRole.PLATFORM_ADMIN, UserRole.TENANT_ADMIN]
+    
+    if current_role is None:
+        # Check if user has any of these roles in any tenant
+        if not any(current_user.has_role(role) for role in allowed_roles):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Tenant admin access required",
+            )
+    elif current_role not in allowed_roles:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Tenant admin access required",
@@ -130,7 +174,16 @@ def require_tenant_admin(current_user: User = Depends(get_current_user)) -> User
 
 def require_administrator(current_user: User = Depends(get_current_user)) -> User:
     """Require administrator role or higher"""
-    if current_user.role not in [UserRole.PLATFORM_ADMIN, UserRole.TENANT_ADMIN, UserRole.ADMINISTRATOR]:
+    current_role = getattr(current_user, '_current_role', None)
+    allowed_roles = [UserRole.PLATFORM_ADMIN, UserRole.TENANT_ADMIN, UserRole.ADMINISTRATOR]
+    
+    if current_role is None:
+        if not any(current_user.has_role(role) for role in allowed_roles):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Administrator access required",
+            )
+    elif current_role not in allowed_roles:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Administrator access required",
@@ -140,12 +193,21 @@ def require_administrator(current_user: User = Depends(get_current_user)) -> Use
 
 def require_sales_engineer(current_user: User = Depends(get_current_user)) -> User:
     """Require sales engineer role or higher"""
-    if current_user.role not in [
+    current_role = getattr(current_user, '_current_role', None)
+    allowed_roles = [
         UserRole.PLATFORM_ADMIN,
         UserRole.TENANT_ADMIN,
         UserRole.ADMINISTRATOR,
         UserRole.SALES_ENGINEER
-    ]:
+    ]
+    
+    if current_role is None:
+        if not any(current_user.has_role(role) for role in allowed_roles):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Sales engineer access required",
+            )
+    elif current_role not in allowed_roles:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Sales engineer access required",
@@ -155,6 +217,9 @@ def require_sales_engineer(current_user: User = Depends(get_current_user)) -> Us
 
 def check_tenant_access(user: User, tenant_id: int) -> bool:
     """Check if user has access to a specific tenant"""
-    if user.role == UserRole.PLATFORM_ADMIN:
+    # Platform admin has access to all tenants
+    if user.has_role(UserRole.PLATFORM_ADMIN):
         return True
-    return user.tenant_id == tenant_id
+    
+    # Check if user has any role in the specified tenant
+    return user.get_role_for_tenant(tenant_id) is not None

@@ -9,6 +9,8 @@ from app.database import get_db
 from app.models.demo_request import DemoRequest, EmailVerificationToken, DemoConversionRequest
 from app.models.tenant import Tenant
 from app.models.user import User, UserRole
+from app.models.tenant_invitation import TenantInvitation, TenantInvitationStatus
+from app.models.user_tenant_role import UserTenantRole
 from app.schemas.demo_request import (
     DemoRequestCreate,
     DemoRequestResponse,
@@ -27,7 +29,7 @@ from app.services.email import (
     send_demo_verification_email,
     send_demo_welcome_email,
     send_demo_conversion_request_email,
-    send_existing_account_notification_email,
+    send_tenant_invitation_email,
 )
 from app.auth import get_password_hash, get_current_user
 from app.config import settings
@@ -52,36 +54,87 @@ async def request_demo_account(
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db)
 ):
-    """Request a demo account"""
-    # Check if email already exists in users - don't reveal this to prevent user enumeration
+    """
+    Request a demo account.
+    
+    If the email belongs to an existing user, we:
+    1. Create the demo tenant immediately
+    2. Send them an invitation to join the demo tenant
+    3. They can accept by logging in with their existing credentials
+    
+    If it's a new user, follow the normal flow:
+    1. Create demo request
+    2. Send email verification
+    3. They set password and tenant is created
+    """
+    # Check if email already exists in users
     existing_user = db.query(User).filter(User.email == data.email).first()
+    
     if existing_user:
-        # Send notification email to existing account holder
+        # Existing user requesting demo - create tenant and send invitation
+        
+        # Create demo tenant immediately
+        tenant_slug = generate_tenant_slug(data.company_name)
+        demo_tenant = Tenant(
+            name=data.company_name,
+            slug=tenant_slug,
+            is_demo=True,
+            sales_engineers_count=data.sales_engineers_count,
+            pocs_per_quarter=data.pocs_per_quarter,
+            contact_email=data.email,
+            is_active=True,
+        )
+        db.add(demo_tenant)
+        db.commit()
+        db.refresh(demo_tenant)
+        
+        # Create tenant invitation for existing user
+        token = secrets.token_urlsafe(32)
+        expires_at = datetime.now(timezone.utc) + timedelta(days=7)
+        
+        tenant_invitation = TenantInvitation(
+            email=data.email,
+            tenant_id=demo_tenant.id,
+            role=UserRole.TENANT_ADMIN,
+            token=token,
+            status=TenantInvitationStatus.PENDING,
+            invited_by_user_id=existing_user.id,  # Self-invitation for demo
+            invited_by_email="demo-system@pocmanager.com",
+            expires_at=expires_at,
+        )
+        db.add(tenant_invitation)
+        db.commit()
+        
+        # Send invitation email
         background_tasks.add_task(
-            send_existing_account_notification_email,
-            existing_user.email,
-            existing_user.full_name,
+            send_tenant_invitation_email,
+            recipient=data.email,
+            tenant_name=data.company_name,
+            role="Tenant Admin",
+            token=token,
+            invited_by="POC Manager Demo System",
         )
         
-        # Create a dummy response to prevent user enumeration
-        # Return a fake demo request that looks successful but doesn't persist
-        dummy_response = DemoRequestResponse(
-            id=0,
+        # Create a demo request record for tracking
+        demo_request = DemoRequest(
             name=data.name,
             email=data.email,
             company_name=data.company_name,
             sales_engineers_count=data.sales_engineers_count,
             pocs_per_quarter=data.pocs_per_quarter,
-            is_verified=False,
-            is_completed=False,
-            tenant_id=None,
-            user_id=None,
-            created_at=datetime.now(timezone.utc),
-            verified_at=None,
-            completed_at=None,
+            is_verified=True,  # Already verified (existing user)
+            verified_at=datetime.now(timezone.utc),
+            is_completed=False,  # Will be completed when they accept invitation
+            tenant_id=demo_tenant.id,
+            user_id=existing_user.id,
         )
-        return dummy_response
+        db.add(demo_request)
+        db.commit()
+        db.refresh(demo_request)
+        
+        return demo_request
     
+    # New user - follow normal demo request flow
     # Check if email already exists in pending demo requests
     existing_request = db.query(DemoRequest).filter(
         DemoRequest.email == data.email,
@@ -190,7 +243,7 @@ async def set_demo_password(
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db)
 ):
-    """Set password and complete demo account setup"""
+    """Set password and complete demo account setup for new users"""
     # Find verification token
     verification_token = db.query(EmailVerificationToken).filter(
         EmailVerificationToken.token == data.token
@@ -224,19 +277,30 @@ async def set_demo_password(
     db.commit()
     db.refresh(tenant)
     
-    # Create user as Tenant Admin
+    # Create user (without role/tenant_id, will use user_tenant_roles)
     user = User(
         email=demo_request.email,
         full_name=demo_request.name,
         hashed_password=get_password_hash(data.password),
-        role=UserRole.TENANT_ADMIN,
-        tenant_id=tenant.id,
         is_active=True,
         is_demo=True,
+        # Note: role and tenant_id columns still exist but deprecated
+        role=UserRole.TENANT_ADMIN,  # Keep for backward compatibility during migration
+        tenant_id=tenant.id,  # Keep for backward compatibility during migration
     )
     db.add(user)
     db.commit()
     db.refresh(user)
+    
+    # Create user-tenant-role association (new multi-tenant approach)
+    user_tenant_role = UserTenantRole(
+        user_id=user.id,
+        tenant_id=tenant.id,
+        role=UserRole.TENANT_ADMIN,
+        is_default=True,
+    )
+    db.add(user_tenant_role)
+    db.commit()
     
     # Update demo request
     demo_request.is_completed = True
