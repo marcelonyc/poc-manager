@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { BuildingOfficeIcon } from '@heroicons/react/24/outline';
-import axios from 'axios';
+import { api } from '../lib/api';
+import { useAuthStore } from '../store/authStore';
+import toast from 'react-hot-toast';
 
 interface TenantOption {
     tenant_id: number | null;
@@ -12,16 +14,23 @@ interface TenantOption {
 }
 
 interface LocationState {
-    email: string;
-    password: string;
     tenants: TenantOption[];
-    userId: number;
+    user: {
+        id: number;
+        email: string;
+        full_name: string;
+    };
+    credentials: {
+        email: string;
+        password: string;
+    };
 }
 
 export default function TenantSelection() {
     const navigate = useNavigate();
     const location = useLocation();
     const state = location.state as LocationState;
+    const login = useAuthStore((state) => state.login);
 
     const [selectedTenant, setSelectedTenant] = useState<number | null>(
         state?.tenants?.find(t => t.is_default)?.tenant_id || state?.tenants?.[0]?.tenant_id || null
@@ -45,32 +54,28 @@ export default function TenantSelection() {
         setError(null);
 
         try {
-            const response = await axios.post('/api/auth/select-tenant', {
+            const response = await api.post('/auth/select-tenant', {
                 tenant_id: selectedTenant,
-            }, {
-                auth: {
-                    username: state.email,
-                    password: state.password,
-                },
+                email: state.credentials.email,
+                password: state.credentials.password,
             });
 
-            // Store the token and tenant info
-            localStorage.setItem('token', response.data.access_token);
-            localStorage.setItem('user', JSON.stringify({
+            // Use auth store to save login state
+            login(response.data.access_token, {
                 id: response.data.user_id,
                 email: response.data.email,
                 full_name: response.data.full_name,
                 role: response.data.role,
                 tenant_id: response.data.tenant_id,
-                tenant_name: response.data.tenant_name,
-                tenant_slug: response.data.tenant_slug,
-            }));
+            });
 
+            toast.success('Tenant selected successfully!');
             // Redirect to dashboard
-            navigate('/dashboard');
+            navigate('/');
         } catch (err: any) {
             console.error('Failed to select tenant:', err);
             setError(err.response?.data?.detail || 'Failed to select tenant. Please try again.');
+            toast.error(err.response?.data?.detail || 'Failed to select tenant');
         } finally {
             setIsLoading(false);
         }

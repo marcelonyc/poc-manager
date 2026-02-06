@@ -33,6 +33,8 @@ class TenantSelectionResponse(BaseModel):
 class SelectTenantRequest(BaseModel):
     """Request to select a specific tenant for the session"""
     tenant_id: Optional[int]  # None for platform admin global access
+    email: str  # Re-authentication required
+    password: str  # Re-authentication required
 
 
 class TenantSwitchRequest(BaseModel):

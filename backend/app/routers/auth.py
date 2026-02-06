@@ -113,8 +113,7 @@ def login(login_data: LoginRequest, db: Session = Depends(get_db)):
 
 @router.post("/select-tenant", response_model=TokenWithTenant)
 def select_tenant(
-    selection: SelectTenantRequest, 
-    login_data: LoginRequest,
+    request: SelectTenantRequest,
     db: Session = Depends(get_db)
 ):
     """
@@ -122,9 +121,9 @@ def select_tenant(
     Requires re-authentication for security.
     """
     # Re-authenticate user
-    user = db.query(User).filter(User.email == login_data.email).first()
+    user = db.query(User).filter(User.email == request.email).first()
     
-    if not user or not verify_password(login_data.password, user.hashed_password):
+    if not user or not verify_password(request.password, user.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect email or password",
@@ -133,7 +132,7 @@ def select_tenant(
     # Find the tenant role association
     tenant_role = db.query(UserTenantRole).filter(
         UserTenantRole.user_id == user.id,
-        UserTenantRole.tenant_id == selection.tenant_id
+        UserTenantRole.tenant_id == request.tenant_id
     ).first()
     
     if not tenant_role:
@@ -153,12 +152,11 @@ def select_tenant(
     access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
         data={
-            "sub": str(user.id), 
-            "email": user.email, 
+            "sub": user.email,
             "role": tenant_role.role.value
         },
         expires_delta=access_token_expires,
-        tenant_id=selection.tenant_id
+        tenant_id=request.tenant_id
     )
     
     tenant_name = tenant_role.tenant.name if tenant_role.tenant else None
@@ -167,7 +165,7 @@ def select_tenant(
     return TokenWithTenant(
         access_token=access_token,
         token_type="bearer",
-        tenant_id=selection.tenant_id,
+        tenant_id=request.tenant_id,
         tenant_name=tenant_name,
         tenant_slug=tenant_slug,
         role=tenant_role.role.value,
