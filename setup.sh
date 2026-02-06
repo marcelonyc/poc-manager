@@ -65,11 +65,14 @@ existing = db.query(User).filter(User.email == 'admin@platform.com').first()
 if existing:
     print('Platform admin already exists.')
 else:
+    # Platform admins don't belong to any tenant (tenant_id=NULL)
+    # They operate at the platform level and are NOT added to user_tenant_roles
     admin = User(
         email='admin@platform.com',
         full_name='Platform Admin',
         hashed_password=get_password_hash('admin123'),
         role=UserRole.PLATFORM_ADMIN,
+        tenant_id=None,  # Explicitly set to None for clarity
         is_active=True
     )
     db.add(admin)
@@ -77,6 +80,7 @@ else:
     print('✅ Platform admin created!')
     print('Email: admin@platform.com')
     print('Password: admin123')
+    print('Role: platform_admin (full platform access, no tenant association)')
     print('⚠️  Please change this password after first login!')
 db.close()
 "

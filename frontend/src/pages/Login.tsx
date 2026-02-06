@@ -31,16 +31,61 @@ export default function Login() {
 
         try {
             const response = await api.post('/auth/login', { email, password })
-            const { access_token } = response.data
+            const data = response.data
 
-            // Get user info
-            const userResponse = await api.get('/auth/me', {
-                headers: { Authorization: `Bearer ${access_token}` }
-            })
+            // Check if user is platform admin (token provided directly)
+            if (data.access_token) {
+                // Platform admin - token already provided
+                const userResponse = await api.get('/auth/me', {
+                    headers: { Authorization: `Bearer ${data.access_token}` }
+                })
 
-            login(access_token, userResponse.data)
-            toast.success('Login successful!')
-            navigate('/')
+                login(data.access_token, {
+                    id: userResponse.data.id,
+                    email: userResponse.data.email,
+                    full_name: userResponse.data.full_name,
+                    role: userResponse.data.current_role || 'platform_admin',
+                    tenant_id: null
+                })
+                toast.success('Login successful!')
+                navigate('/')
+            } else if (data.tenants && data.tenants.length > 0) {
+                // Regular user - needs to select tenant
+                if (data.requires_selection) {
+                    // Multiple tenants - redirect to selection page
+                    navigate('/tenant-selection', {
+                        state: {
+                            tenants: data.tenants,
+                            user: {
+                                id: data.user_id,
+                                email: data.email,
+                                full_name: data.full_name
+                            },
+                            credentials: { email, password }
+                        }
+                    })
+                } else {
+                    // Single tenant - auto-select
+                    const tenant = data.tenants[0]
+                    const selectResponse = await api.post('/auth/select-tenant', {
+                        tenant_id: tenant.tenant_id,
+                        email: email,
+                        password: password
+                    })
+
+                    login(selectResponse.data.access_token, {
+                        id: selectResponse.data.user_id,
+                        email: selectResponse.data.email,
+                        full_name: selectResponse.data.full_name,
+                        role: selectResponse.data.role,
+                        tenant_id: selectResponse.data.tenant_id
+                    })
+                    toast.success('Login successful!')
+                    navigate('/')
+                }
+            } else {
+                toast.error('No tenant associations found')
+            }
         } catch (error: any) {
             toast.error(error.response?.data?.detail || 'Login failed')
         } finally {
