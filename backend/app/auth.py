@@ -63,22 +63,14 @@ async def get_current_user(
     token = credentials.credentials
     payload = decode_token(token)
     
-    user_id_str: str = payload.get("sub")
-    if user_id_str is None:
+    email: str = payload.get("sub")
+    if email is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Could not validate credentials",
         )
     
-    try:
-        user_id = int(user_id_str)
-    except (ValueError, TypeError):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid token format",
-        )
-    
-    user = db.query(User).filter(User.id == user_id).first()
+    user = db.query(User).filter(User.email == email).first()
     if user is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -106,6 +98,11 @@ async def get_current_user(
         role = user.get_role_for_tenant(tenant_id)
         if role:
             setattr(user, '_current_role', role)
+    else:
+        # No tenant context - could be platform admin or global access
+        # Use the role from the User table
+        setattr(user, '_current_role', user.role)
+        setattr(user, '_current_tenant_id', None)
     
     return user
 
@@ -124,6 +121,11 @@ def require_role(*roles: UserRole):
     """Dependency to require specific user roles in current tenant context"""
     def role_checker(current_user: User = Depends(get_current_user)) -> User:
         current_role = getattr(current_user, '_current_role', None)
+        
+        # Platform admins always have access
+        if current_role == UserRole.PLATFORM_ADMIN:
+            return current_user
+        
         if current_role is None:
             # Fall back to checking any tenant role
             if not any(current_user.has_role(role) for role in roles):

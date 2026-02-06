@@ -51,6 +51,20 @@ def login(login_data: LoginRequest, db: Session = Depends(get_db)):
     user.last_login = datetime.utcnow()
     db.commit()
     
+    # Platform admins don't belong to any tenant - handle them specially
+    if user.role.value == "platform_admin":
+        # Create access token without tenant context
+        access_token = create_access_token(data={"sub": user.email})
+        return TenantSelectionResponse(
+            user_id=user.id,
+            email=user.email,
+            full_name=user.full_name,
+            tenants=[],
+            requires_selection=False,
+            access_token=access_token,
+            token_type="bearer"
+        )
+    
     # Get all tenant associations for this user
     tenant_roles = db.query(UserTenantRole).filter(
         UserTenantRole.user_id == user.id

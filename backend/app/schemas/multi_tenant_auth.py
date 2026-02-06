@@ -23,6 +23,8 @@ class TenantSelectionResponse(BaseModel):
     full_name: str
     tenants: List[TenantOption]
     requires_selection: bool  # True if user has multiple tenants
+    access_token: Optional[str] = None  # Provided directly for platform admins
+    token_type: Optional[str] = None  # "bearer" for platform admins
     
     class Config:
         from_attributes = True
