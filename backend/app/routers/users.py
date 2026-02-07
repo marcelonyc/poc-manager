@@ -187,13 +187,12 @@ def deactivate_user(
 ):
     """Deactivate a user in the current tenant (Tenant Admin) or platform-wide (Platform Admin only)"""
 
-    # Get the current user's actual role in this tenant from the database
-    # Do NOT use current_user.role as it's deprecated and could be wrong
-    if tenant_id is None:
-        # No tenant context - must be a platform admin
-        current_role = current_user.role
-    else:
-        # Query the database for the user's role in this specific tenant
+    # CRITICAL: Determine if user is a platform admin
+    # Platform admins should NEVER have tenant context
+    # If tenant_id exists, user is NOT a platform admin (even if they have the role in users table)
+
+    if tenant_id is not None:
+        # User is in a tenant context - query their role in this specific tenant
         current_user_tenant_role = (
             db.query(UserTenantRole)
             .filter(
@@ -211,47 +210,54 @@ def deactivate_user(
 
         current_role = current_user_tenant_role.role
 
-    # Only Platform Admins can deactivate at platform level
-    if current_role == UserRole.PLATFORM_ADMIN:
+        # Tenant-scoped users can NEVER modify platform-level is_active
+        # They can only modify tenant-level is_active
+        if current_role not in [UserRole.TENANT_ADMIN, UserRole.ADMINISTRATOR]:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Insufficient permissions to deactivate users",
+            )
+
+        # Deactivate user in THIS tenant only
+        user_tenant_role = (
+            db.query(UserTenantRole)
+            .filter(
+                UserTenantRole.user_id == user_id,
+                UserTenantRole.tenant_id == tenant_id,
+            )
+            .first()
+        )
+
+        if not user_tenant_role:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User not found in this tenant",
+            )
+
+        user_tenant_role.is_active = False
+        db.commit()
+        return {"message": "User deactivated in tenant successfully"}
+
+    else:
+        # No tenant context - check if user is actually a platform admin
+        # This should only happen for true platform admins
+        if current_user.role != UserRole.PLATFORM_ADMIN:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Platform admin privileges required",
+            )
+
+        # Platform admin can deactivate at platform level
         user = db.query(User).filter(User.id == user_id).first()
         if not user:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="User not found",
             )
+
         user.is_active = False
         db.commit()
         return {"message": "User deactivated at platform level"}
-
-    # Tenant Admins and Administrators can only deactivate within their tenant
-    if current_role not in [
-        UserRole.TENANT_ADMIN,
-        UserRole.ADMINISTRATOR,
-    ]:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Insufficient permissions to deactivate users",
-        )
-
-    user_tenant_role = (
-        db.query(UserTenantRole)
-        .filter(
-            UserTenantRole.user_id == user_id,
-            UserTenantRole.tenant_id == tenant_id,
-        )
-        .first()
-    )
-
-    if not user_tenant_role:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="User not found in this tenant",
-        )
-
-    user_tenant_role.is_active = False
-    db.commit()
-
-    return {"message": "User deactivated in tenant successfully"}
 
 
 @router.post("/invite", status_code=status.HTTP_201_CREATED)
@@ -311,13 +317,12 @@ def reactivate_user(
 ):
     """Reactivate a user in the current tenant (Tenant Admin) or platform-wide (Platform Admin only)"""
 
-    # Get the current user's actual role in this tenant from the database
-    # Do NOT use current_user.role as it's deprecated and could be wrong
-    if tenant_id is None:
-        # No tenant context - must be a platform admin
-        current_role = current_user.role
-    else:
-        # Query the database for the user's role in this specific tenant
+    # CRITICAL: Determine if user is a platform admin
+    # Platform admins should NEVER have tenant context
+    # If tenant_id exists, user is NOT a platform admin (even if they have the role in users table)
+
+    if tenant_id is not None:
+        # User is in a tenant context - query their role in this specific tenant
         current_user_tenant_role = (
             db.query(UserTenantRole)
             .filter(
@@ -335,42 +340,54 @@ def reactivate_user(
 
         current_role = current_user_tenant_role.role
 
-    # Only Platform Admins can reactivate at platform level
-    if current_role == UserRole.PLATFORM_ADMIN:
+        # Tenant-scoped users can NEVER modify platform-level is_active
+        # They can only modify tenant-level is_active
+        if current_role not in [UserRole.TENANT_ADMIN, UserRole.ADMINISTRATOR]:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Insufficient permissions to reactivate users",
+            )
+
+        # Reactivate user in THIS tenant only
+        user_tenant_role = (
+            db.query(UserTenantRole)
+            .filter(
+                UserTenantRole.user_id == user_id,
+                UserTenantRole.tenant_id == tenant_id,
+            )
+            .first()
+        )
+
+        if not user_tenant_role:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User not found in this tenant",
+            )
+
+        user_tenant_role.is_active = True
+        db.commit()
+        return {"message": "User reactivated in tenant successfully"}
+
+    else:
+        # No tenant context - check if user is actually a platform admin
+        # This should only happen for true platform admins
+        if current_user.role != UserRole.PLATFORM_ADMIN:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Platform admin privileges required",
+            )
+
+        # Platform admin can reactivate at platform level
         user = db.query(User).filter(User.id == user_id).first()
         if not user:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="User not found",
             )
+
         user.is_active = True
         db.commit()
         return {"message": "User reactivated at platform level"}
-
-    # Tenant Admins and Administrators can only reactivate within their tenant
-    if current_role not in [
-        UserRole.TENANT_ADMIN,
-        UserRole.ADMINISTRATOR,
-    ]:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Insufficient permissions to reactivate users",
-        )
-
-    user_tenant_role = (
-        db.query(UserTenantRole)
-        .filter(
-            UserTenantRole.user_id == user_id,
-            UserTenantRole.tenant_id == tenant_id,
-        )
-        .first()
-    )
-
-    if not user_tenant_role:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="User not found in this tenant",
-        )
 
     user_tenant_role.is_active = True
     db.commit()
