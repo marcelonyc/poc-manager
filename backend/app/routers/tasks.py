@@ -782,7 +782,48 @@ def get_poc_task_group_tasks(
                 .all()
             )
 
-            return poc_tasks
+            # Populate assignees for each task
+            from app.schemas.task import (
+                POCTaskAssignee as POCTaskAssigneeSchema,
+            )
+
+            result = []
+            for task in poc_tasks:
+                task_dict = {
+                    "id": task.id,
+                    "title": task.title,
+                    "description": task.description,
+                    "task_id": task.task_id,
+                    "success_criteria_ids": task.success_criteria_ids,
+                    "sort_order": task.sort_order,
+                    "status": task.status,
+                    "assignees": [],
+                }
+
+                # Get assignees for this task
+                assignees = (
+                    db.query(POCTaskAssignee)
+                    .filter(POCTaskAssignee.poc_task_id == task.id)
+                    .all()
+                )
+
+                for assignee in assignees:
+                    participant = assignee.participant
+                    if participant and participant.user:
+                        task_dict["assignees"].append(
+                            POCTaskAssigneeSchema(
+                                id=assignee.id,
+                                participant_id=assignee.participant_id,
+                                participant_name=participant.user.full_name
+                                or participant.user.email,
+                                participant_email=participant.user.email,
+                                assigned_at=assignee.assigned_at,
+                            ).dict()
+                        )
+
+                result.append(task_dict)
+
+            return result
 
     # If no template or no tasks found, return empty list
     return []
