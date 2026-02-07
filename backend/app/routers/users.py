@@ -98,20 +98,50 @@ def list_users(
     tenant_id: int = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    session_tenant_id: int = Depends(get_current_tenant_id),
 ):
-    """List users"""
-    query = db.query(User)
+    """List users with tenant-specific is_active status"""
 
-    # Filter by tenant for non-platform admins
-    if current_user.role == UserRole.PLATFORM_ADMIN:
+    # For tenant-scoped requests, we need to join with user_tenant_roles
+    # to get the tenant-specific is_active status
+    if session_tenant_id is not None:
+        # Query users joined with their tenant roles
+        results = (
+            db.query(User, UserTenantRole)
+            .join(
+                UserTenantRole,
+                (UserTenantRole.user_id == User.id)
+                & (UserTenantRole.tenant_id == session_tenant_id),
+            )
+            .offset(skip)
+            .limit(limit)
+            .all()
+        )
+
+        # Build response with tenant-specific is_active
+        users_with_tenant_status = []
+        for user, tenant_role in results:
+            user_dict = {
+                "id": user.id,
+                "email": user.email,
+                "full_name": user.full_name,
+                "role": user.role,
+                "is_active": tenant_role.is_active,  # Use tenant-specific is_active
+                "tenant_id": user.tenant_id,
+                "created_at": user.created_at,
+                "last_login": user.last_login,
+            }
+            users_with_tenant_status.append(user_dict)
+
+        return users_with_tenant_status
+    else:
+        # Platform admin without tenant context - return users table is_active
+        query = db.query(User)
         if tenant_id:
             query = query.filter(User.tenant_id == tenant_id)
-    else:
-        user_tenant_id = get_current_tenant_id(current_user)
-        query = query.filter(User.tenant_id == user_tenant_id)
 
-    users = query.offset(skip).limit(limit).all()
-    return users
+        users = query.offset(skip).limit(limit).all()
+        return users
 
 
 @router.get("/{user_id}", response_model=UserSchema)
