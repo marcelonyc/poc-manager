@@ -182,13 +182,12 @@ def update_user(
 def deactivate_user(
     user_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_administrator),
+    current_user: User = Depends(get_current_user),
     tenant_id: int = Depends(get_current_tenant_id),
 ):
-    """Deactivate a user in the current tenant"""
-    from app.models.user_tenant_role import UserTenantRole
+    """Deactivate a user in the current tenant (Tenant Admin) or platform-wide (Platform Admin only)"""
 
-    # Platform admins can deactivate at platform level
+    # Only Platform Admins can deactivate at platform level
     if current_user.role == UserRole.PLATFORM_ADMIN:
         user = db.query(User).filter(User.id == user_id).first()
         if not user:
@@ -200,7 +199,16 @@ def deactivate_user(
         db.commit()
         return {"message": "User deactivated at platform level"}
 
-    # Tenant admins can only deactivate in their tenant
+    # Tenant Admins and Administrators can only deactivate within their tenant
+    if current_user.role not in [
+        UserRole.TENANT_ADMIN,
+        UserRole.ADMINISTRATOR,
+    ]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Insufficient permissions to deactivate users",
+        )
+
     user_tenant_role = (
         db.query(UserTenantRole)
         .filter(
@@ -274,13 +282,12 @@ def invite_user(
 def reactivate_user(
     user_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_administrator),
+    current_user: User = Depends(get_current_user),
     tenant_id: int = Depends(get_current_tenant_id),
 ):
-    """Reactivate a user in the current tenant"""
-    from app.models.user_tenant_role import UserTenantRole
+    """Reactivate a user in the current tenant (Tenant Admin) or platform-wide (Platform Admin only)"""
 
-    # Platform admins can reactivate at platform level
+    # Only Platform Admins can reactivate at platform level
     if current_user.role == UserRole.PLATFORM_ADMIN:
         user = db.query(User).filter(User.id == user_id).first()
         if not user:
@@ -292,7 +299,16 @@ def reactivate_user(
         db.commit()
         return {"message": "User reactivated at platform level"}
 
-    # Tenant admins can only reactivate in their tenant
+    # Tenant Admins and Administrators can only reactivate within their tenant
+    if current_user.role not in [
+        UserRole.TENANT_ADMIN,
+        UserRole.ADMINISTRATOR,
+    ]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Insufficient permissions to reactivate users",
+        )
+
     user_tenant_role = (
         db.query(UserTenantRole)
         .filter(
