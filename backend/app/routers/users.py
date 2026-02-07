@@ -5,11 +5,16 @@ from sqlalchemy.orm import Session
 from typing import List
 from app.database import get_db
 from app.models.user import User, UserRole
+from app.models.user_tenant_role import UserTenantRole
 from app.schemas.user import (
     UserCreate,
     UserUpdate,
     User as UserSchema,
     UserInvite,
+)
+from app.schemas.user_tenant_role import (
+    UserTenantRole as UserTenantRoleSchema,
+    UserTenantRoleUpdate,
 )
 from app.auth import (
     require_platform_admin,
@@ -180,28 +185,41 @@ def deactivate_user(
     current_user: User = Depends(require_administrator),
     tenant_id: int = Depends(get_current_tenant_id),
 ):
-    """Deactivate a user"""
-    user = db.query(User).filter(User.id == user_id).first()
-    if not user:
+    """Deactivate a user in the current tenant"""
+    from app.models.user_tenant_role import UserTenantRole
+
+    # Platform admins can deactivate at platform level
+    if current_user.role == UserRole.PLATFORM_ADMIN:
+        user = db.query(User).filter(User.id == user_id).first()
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User not found",
+            )
+        user.is_active = False
+        db.commit()
+        return {"message": "User deactivated at platform level"}
+
+    # Tenant admins can only deactivate in their tenant
+    user_tenant_role = (
+        db.query(UserTenantRole)
+        .filter(
+            UserTenantRole.user_id == user_id,
+            UserTenantRole.tenant_id == tenant_id,
+        )
+        .first()
+    )
+
+    if not user_tenant_role:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="User not found",
+            detail="User not found in this tenant",
         )
 
-    # Check access
-    if (
-        current_user.role != UserRole.PLATFORM_ADMIN
-        and user.tenant_id != tenant_id
-    ):
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="User not found",
-        )
-
-    user.is_active = False
+    user_tenant_role.is_active = False
     db.commit()
 
-    return {"message": "User deactivated successfully"}
+    return {"message": "User deactivated in tenant successfully"}
 
 
 @router.post("/invite", status_code=status.HTTP_201_CREATED)
@@ -250,3 +268,130 @@ def invite_user(
         "user_id": user.id,
         "temporary_password": temp_password,  # Remove in production
     }
+
+
+@router.post("/{user_id}/reactivate")
+def reactivate_user(
+    user_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_administrator),
+    tenant_id: int = Depends(get_current_tenant_id),
+):
+    """Reactivate a user in the current tenant"""
+    from app.models.user_tenant_role import UserTenantRole
+
+    # Platform admins can reactivate at platform level
+    if current_user.role == UserRole.PLATFORM_ADMIN:
+        user = db.query(User).filter(User.id == user_id).first()
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User not found",
+            )
+        user.is_active = True
+        db.commit()
+        return {"message": "User reactivated at platform level"}
+
+    # Tenant admins can only reactivate in their tenant
+    user_tenant_role = (
+        db.query(UserTenantRole)
+        .filter(
+            UserTenantRole.user_id == user_id,
+            UserTenantRole.tenant_id == tenant_id,
+        )
+        .first()
+    )
+
+    if not user_tenant_role:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found in this tenant",
+        )
+
+    user_tenant_role.is_active = True
+    db.commit()
+
+    return {"message": "User reactivated in tenant successfully"}
+
+
+@router.get(
+    "/{user_id}/tenant-roles", response_model=List[UserTenantRoleSchema]
+)
+def get_user_tenant_roles(
+    user_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Get all tenant roles for a user (Platform Admin only)"""
+    if (
+        current_user.role != UserRole.PLATFORM_ADMIN
+        and current_user.id != user_id
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Insufficient permissions",
+        )
+
+    tenant_roles = (
+        db.query(UserTenantRole)
+        .filter(UserTenantRole.user_id == user_id)
+        .all()
+    )
+
+    return tenant_roles
+
+
+@router.put(
+    "/{user_id}/tenant-roles/{tenant_id}", response_model=UserTenantRoleSchema
+)
+def update_user_tenant_role(
+    user_id: int,
+    tenant_id: int,
+    update_data: UserTenantRoleUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    session_tenant_id: int = Depends(get_current_tenant_id),
+):
+    """Update user's tenant role (is_active, role, or is_default)"""
+    # Find the user-tenant-role association
+    user_tenant_role = (
+        db.query(UserTenantRole)
+        .filter(
+            UserTenantRole.user_id == user_id,
+            UserTenantRole.tenant_id == tenant_id,
+        )
+        .first()
+    )
+
+    if not user_tenant_role:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User-tenant association not found",
+        )
+
+    # Check permissions
+    if current_user.role == UserRole.PLATFORM_ADMIN:
+        # Platform admins can update any field
+        pass
+    elif current_user.role in [UserRole.TENANT_ADMIN, UserRole.ADMINISTRATOR]:
+        # Tenant admins can only update users in their own tenant
+        if tenant_id != session_tenant_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Cannot modify users in other tenants",
+            )
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Insufficient permissions",
+        )
+
+    # Update fields
+    update_dict = update_data.dict(exclude_unset=True)
+    for field, value in update_dict.items():
+        setattr(user_tenant_role, field, value)
+
+    db.commit()
+    db.refresh(user_tenant_role)
+
+    return user_tenant_role
