@@ -33,6 +33,7 @@ from app.schemas.poc import (
 from app.auth import (
     require_sales_engineer,
     get_current_user,
+    get_current_tenant_id,
     check_tenant_access,
 )
 from app.services.email import send_poc_invitation_email_with_tracking
@@ -52,10 +53,11 @@ def create_poc(
     poc_data: POCCreate,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_sales_engineer),
+    tenant_id: int = Depends(get_current_tenant_id),
 ):
     """Create a new POC"""
     # Check demo limits
-    check_demo_poc_limit(db, current_user.tenant_id, current_user.tenant)
+    check_demo_poc_limit(db, tenant_id, current_user.tenant)
 
     poc = POC(
         title=poc_data.title,
@@ -63,7 +65,7 @@ def create_poc(
         customer_company_name=poc_data.customer_company_name,
         start_date=poc_data.start_date,
         end_date=poc_data.end_date,
-        tenant_id=current_user.tenant_id,
+        tenant_id=tenant_id,
         created_by=current_user.id,
         status=POCStatus.DRAFT,
     )
@@ -76,7 +78,7 @@ def create_poc(
             db.query(Product)
             .filter(
                 Product.id.in_(poc_data.product_ids),
-                Product.tenant_id == current_user.tenant_id,
+                Product.tenant_id == tenant_id,
             )
             .all()
         )
@@ -104,13 +106,14 @@ def list_pocs(
     user_name: str = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    tenant_id: int = Depends(get_current_tenant_id),
 ):
     """List POCs with optional filters"""
     query = db.query(POC)
 
     # Filter by tenant for non-platform admins
     if current_user.role != UserRole.PLATFORM_ADMIN:
-        query = query.filter(POC.tenant_id == current_user.tenant_id)
+        query = query.filter(POC.tenant_id == tenant_id)
 
     # Filter by status
     if status:
@@ -198,6 +201,7 @@ def update_poc(
     poc_data: POCUpdate,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_sales_engineer),
+    tenant_id: int = Depends(get_current_tenant_id),
 ):
     """Update POC details"""
     poc = db.query(POC).filter(POC.id == poc_id).first()
@@ -225,7 +229,7 @@ def update_poc(
                 db.query(Product)
                 .filter(
                     Product.id.in_(product_ids),
-                    Product.tenant_id == current_user.tenant_id,
+                    Product.tenant_id == tenant_id,
                 )
                 .all()
             )
@@ -432,10 +436,11 @@ def remove_participant(
 def get_dashboard_stats(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    tenant_id: int = Depends(get_current_tenant_id),
 ):
     """Get dashboard statistics for tenant users"""
     # Filter by tenant
-    query_base = db.query(POC).filter(POC.tenant_id == current_user.tenant_id)
+    query_base = db.query(POC).filter(POC.tenant_id == tenant_id)
 
     # Count POCs by status
     active_pocs = query_base.filter(POC.status == POCStatus.ACTIVE).count()
@@ -450,7 +455,7 @@ def get_dashboard_stats(
     team_members = (
         db.query(User)
         .filter(
-            User.tenant_id == current_user.tenant_id,
+            User.tenant_id == tenant_id,
             User.role != UserRole.CUSTOMER,
         )
         .count()
@@ -460,7 +465,7 @@ def get_dashboard_stats(
     customers = (
         db.query(User)
         .filter(
-            User.tenant_id == current_user.tenant_id,
+            User.tenant_id == tenant_id,
             User.role == UserRole.CUSTOMER,
         )
         .count()
@@ -576,6 +581,7 @@ async def upload_poc_logo(
     logo: UploadFile = File(...),
     db: Session = Depends(get_db),
     current_user: User = Depends(require_sales_engineer),
+    tenant_id: int = Depends(get_current_tenant_id),
 ):
     """Upload customer logo for POC (Sales Engineer/Admin only)"""
     poc = db.query(POC).filter(POC.id == poc_id).first()
@@ -588,7 +594,7 @@ async def upload_poc_logo(
     # Check tenant access
     if (
         current_user.role not in [UserRole.PLATFORM_ADMIN]
-        and current_user.tenant_id != poc.tenant_id
+        and tenant_id != poc.tenant_id
     ):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -653,6 +659,7 @@ def delete_poc_logo(
     poc_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_sales_engineer),
+    tenant_id: int = Depends(get_current_tenant_id),
 ):
     """Delete customer logo from POC (Sales Engineer/Admin only)"""
     poc = db.query(POC).filter(POC.id == poc_id).first()
@@ -665,7 +672,7 @@ def delete_poc_logo(
     # Check tenant access
     if (
         current_user.role not in [UserRole.PLATFORM_ADMIN]
-        and current_user.tenant_id != poc.tenant_id
+        and tenant_id != poc.tenant_id
     ):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,

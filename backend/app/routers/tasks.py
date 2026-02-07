@@ -35,6 +35,7 @@ from app.auth import (
     require_administrator,
     require_sales_engineer,
     get_current_user,
+    get_current_tenant_id,
     check_tenant_access,
 )
 from app.utils.demo_limits import (
