@@ -19,6 +19,7 @@ import Products from './pages/Products'
 import DemoRequests from './pages/DemoRequests'
 import PlatformAdminInvitations from './pages/PlatformAdminInvitations'
 import AcceptInvitation from './pages/AcceptInvitation'
+import AcceptTenantInvitation from './pages/AcceptTenantInvitation'
 import AcceptPOCInvitation from './pages/AcceptPOCInvitation'
 import Layout from './components/Layout'
 import HelpBubble from './components/HelpBubble'
@@ -38,6 +39,7 @@ function App() {
                 <Route path="/verify-demo-email" element={<VerifyDemoEmail />} />
                 <Route path="/demo/set-password" element={<SetDemoPassword />} />
                 <Route path="/accept-invitation" element={<AcceptInvitation />} />
+                <Route path="/tenant-invitation" element={<AcceptTenantInvitation />} />
                 <Route path="/poc-invitation" element={<AcceptPOCInvitation />} />
 
                 {isAuthenticated ? (
