@@ -1,4 +1,5 @@
 """Task schemas"""
+
 from pydantic import BaseModel, ConfigDict
 from typing import Optional, List, TYPE_CHECKING
 from datetime import datetime
@@ -10,65 +11,74 @@ if TYPE_CHECKING:
 
 class TaskBase(BaseModel):
     """Base task schema"""
+
     title: str
     description: Optional[str] = None
 
 
 class TaskCreate(TaskBase):
     """Schema for creating a task template"""
+
     pass
 
 
 class TaskUpdate(BaseModel):
     """Schema for updating a task"""
+
     title: Optional[str] = None
     description: Optional[str] = None
 
 
 class Task(TaskBase):
     """Schema for task response"""
+
     id: int
     tenant_id: int
     created_by: int
     is_template: bool
     created_at: datetime
-    
+
     class Config:
         from_attributes = True
 
 
 class TaskGroupBase(BaseModel):
     """Base task group schema"""
+
     title: str
     description: Optional[str] = None
 
 
 class TaskGroupCreate(TaskGroupBase):
     """Schema for creating a task group template"""
+
     pass
 
 
 class TaskGroupUpdate(BaseModel):
     """Schema for updating a task group"""
+
     title: Optional[str] = None
     description: Optional[str] = None
 
 
 class TaskGroup(TaskGroupBase):
     """Schema for task group response"""
+
     id: int
     tenant_id: int
     created_by: int
     is_template: bool
     created_at: datetime
-    tasks: List['Task'] = []
-    
+    tasks: List["Task"] = []
+
     class Config:
         from_attributes = True
 
 
 class POCTaskBase(BaseModel):
     """Base POC task schema"""
+
     title: str
     description: Optional[str] = None
     sort_order: Optional[int] = 0
@@ -76,12 +86,14 @@ class POCTaskBase(BaseModel):
 
 class POCTaskCreate(POCTaskBase):
     """Schema for creating a POC task"""
+
     task_id: Optional[int] = None  # Reference to template
     success_criteria_ids: Optional[list[int]] = []
 
 
 class POCTaskUpdate(BaseModel):
     """Schema for updating a POC task"""
+
     title: Optional[str] = None
     description: Optional[str] = None
     status: Optional[TaskStatus] = None
@@ -89,8 +101,28 @@ class POCTaskUpdate(BaseModel):
     sort_order: Optional[int] = None
 
 
+class POCTaskAssignee(BaseModel):
+    """Schema for task assignee response"""
+
+    id: int
+    participant_id: int
+    participant_name: str
+    participant_email: str
+    assigned_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class POCTaskAssignRequest(BaseModel):
+    """Schema for assigning/unassigning participants to a task"""
+
+    participant_ids: List[int]
+
+
 class POCTask(POCTaskBase):
     """Schema for POC task response"""
+
     id: int
     poc_id: int
     task_id: Optional[int]
@@ -98,12 +130,14 @@ class POCTask(POCTaskBase):
     success_level: Optional[int]
     created_at: datetime
     completed_at: Optional[datetime]
-    
+    assignees: List[POCTaskAssignee] = []
+
     model_config = ConfigDict(from_attributes=True, use_enum_values=True)
 
 
 class POCTaskGroupBase(BaseModel):
     """Base POC task group schema"""
+
     title: str
     description: Optional[str] = None
     sort_order: Optional[int] = 0
@@ -111,12 +145,14 @@ class POCTaskGroupBase(BaseModel):
 
 class POCTaskGroupCreate(POCTaskGroupBase):
     """Schema for creating a POC task group"""
+
     task_group_id: Optional[int] = None
     success_criteria_ids: Optional[list[int]] = []
 
 
 class POCTaskGroupUpdate(BaseModel):
     """Schema for updating a POC task group"""
+
     title: Optional[str] = None
     description: Optional[str] = None
     status: Optional[TaskStatus] = None
@@ -126,6 +162,7 @@ class POCTaskGroupUpdate(BaseModel):
 
 class POCTaskGroup(POCTaskGroupBase):
     """Schema for POC task group response"""
+
     id: int
     poc_id: int
     task_group_id: Optional[int]
@@ -133,5 +170,5 @@ class POCTaskGroup(POCTaskGroupBase):
     success_level: Optional[int]
     created_at: datetime
     completed_at: Optional[datetime]
-    
+
     model_config = ConfigDict(from_attributes=True, use_enum_values=True)

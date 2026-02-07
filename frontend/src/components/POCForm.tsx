@@ -5,6 +5,7 @@ import { useAuthStore } from '../store/authStore'
 import { useNavigate } from 'react-router-dom'
 import CommentsModal from './CommentsModal'
 import LogoUpload from './LogoUpload'
+import TaskAssignmentModal from './TaskAssignmentModal'
 
 interface Product {
     id: number
@@ -46,6 +47,14 @@ interface Participant {
     resend_count?: number
 }
 
+interface TaskAssignee {
+    id: number
+    participant_id: number
+    participant_name: string
+    participant_email: string
+    assigned_at: string
+}
+
 interface POCTask {
     id?: number
     title: string
@@ -54,6 +63,7 @@ interface POCTask {
     success_criteria_ids: number[]
     sort_order: number
     status?: string
+    assignees?: TaskAssignee[]
 }
 
 interface POCTaskGroup {
@@ -156,6 +166,10 @@ export default function POCForm({ pocId, initialData, onClose }: POCFormProps) {
     const [showCommentsModal, setShowCommentsModal] = useState(false)
     const [commentsModalTaskId, setCommentsModalTaskId] = useState<number | undefined>()
     const [commentsModalTaskGroupId, setCommentsModalTaskGroupId] = useState<number | undefined>()
+
+    // Task Assignment Modal
+    const [showAssignmentModal, setShowAssignmentModal] = useState(false)
+    const [assignmentModalTask, setAssignmentModalTask] = useState<POCTask | null>(null)
 
     // Helper function to format API errors
     const formatErrorMessage = (error: any, defaultMessage: string): string => {
@@ -478,6 +492,23 @@ export default function POCForm({ pocId, initialData, onClose }: POCFormProps) {
             toast.success('Task status updated')
         } catch (error: any) {
             toast.error(formatErrorMessage(error, 'Failed to update task status'))
+        }
+    }
+
+    const handleOpenAssignmentModal = (task: POCTask) => {
+        setAssignmentModalTask(task)
+        setShowAssignmentModal(true)
+    }
+
+    const handleAssignmentComplete = async () => {
+        // Refresh task data to get updated assignees
+        if (pocId) {
+            try {
+                const response = await api.get(`/tasks/pocs/${pocId}/tasks`)
+                setPocTasks(response.data || [])
+            } catch (error: any) {
+                toast.error('Failed to refresh task data')
+            }
         }
     }
 
@@ -1245,6 +1276,16 @@ export default function POCForm({ pocId, initialData, onClose }: POCFormProps) {
                                                             })}
                                                         </div>
                                                     )}
+                                                    {task.assignees && task.assignees.length > 0 && (
+                                                        <div className="mt-2 flex flex-wrap gap-1">
+                                                            <span className="text-xs text-gray-600 mr-1">Assigned to:</span>
+                                                            {task.assignees.map(assignee => (
+                                                                <span key={assignee.id} className="px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs" title={assignee.participant_email}>
+                                                                    👤 {assignee.participant_name}
+                                                                </span>
+                                                            ))}
+                                                        </div>
+                                                    )}
                                                 </div>
                                                 {pocId && (
                                                     <div className="flex items-center gap-2">
@@ -1259,6 +1300,13 @@ export default function POCForm({ pocId, initialData, onClose }: POCFormProps) {
                                                             <option value="completed">Completed</option>
                                                             <option value="blocked">Blocked</option>
                                                         </select>
+                                                        <button
+                                                            onClick={() => handleOpenAssignmentModal(task)}
+                                                            className="px-3 py-1.5 bg-indigo-100 text-indigo-700 rounded-lg hover:bg-indigo-200 text-sm"
+                                                            title="Assign Participants"
+                                                        >
+                                                            👥 Assign
+                                                        </button>
                                                         <button
                                                             onClick={() => {
                                                                 setCommentsModalTaskId(task.id)
@@ -1985,6 +2033,22 @@ export default function POCForm({ pocId, initialData, onClose }: POCFormProps) {
                     </div>
                 )
             }
+
+            {/* Task Assignment Modal */}
+            {showAssignmentModal && assignmentModalTask && pocId && (
+                <TaskAssignmentModal
+                    pocId={pocId}
+                    taskId={assignmentModalTask.id!}
+                    taskTitle={assignmentModalTask.title}
+                    participants={participants}
+                    currentAssignees={assignmentModalTask.assignees}
+                    onClose={() => {
+                        setShowAssignmentModal(false)
+                        setAssignmentModalTask(null)
+                    }}
+                    onAssigned={handleAssignmentComplete}
+                />
+            )}
         </div >
     )
 }

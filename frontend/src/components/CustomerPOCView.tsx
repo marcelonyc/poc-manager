@@ -3,11 +3,20 @@ import { api } from '../lib/api'
 import toast from 'react-hot-toast'
 import CommentsModal from './CommentsModal'
 
+interface TaskAssignee {
+    id: number
+    participant_id: number
+    participant_name: string
+    participant_email: string
+    assigned_at: string
+}
+
 interface POCTask {
     id?: number
     title: string
     description: string | null
     status?: string
+    assignees?: TaskAssignee[]
 }
 
 interface POCTaskGroup {
@@ -344,6 +353,16 @@ export default function CustomerPOCView({ pocId }: CustomerPOCViewProps) {
                                                     {task.description && (
                                                         <p className="text-sm text-gray-600 mt-1">{task.description}</p>
                                                     )}
+                                                    {task.assignees && task.assignees.length > 0 && (
+                                                        <div className="mt-2 flex flex-wrap gap-1">
+                                                            <span className="text-xs text-gray-600 mr-1">Assigned to:</span>
+                                                            {task.assignees.map(assignee => (
+                                                                <span key={assignee.id} className="px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs" title={assignee.participant_email}>
+                                                                    👤 {assignee.participant_name}
+                                                                </span>
+                                                            ))}
+                                                        </div>
+                                                    )}
                                                 </div>
                                                 <div className="flex items-center gap-2">
                                                     <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(task.status)}`}>
@@ -438,6 +457,16 @@ export default function CustomerPOCView({ pocId }: CustomerPOCViewProps) {
                                                                             <h5 className="font-medium text-gray-800 text-sm">{task.title}</h5>
                                                                             {task.description && (
                                                                                 <p className="text-sm text-gray-600 mt-1">{task.description}</p>
+                                                                            )}
+                                                                            {task.assignees && task.assignees.length > 0 && (
+                                                                                <div className="mt-2 flex flex-wrap gap-1">
+                                                                                    <span className="text-xs text-gray-600 mr-1">Assigned to:</span>
+                                                                                    {task.assignees.map(assignee => (
+                                                                                        <span key={assignee.id} className="px-2 py-0.5 bg-blue-100 text-blue-800 rounded text-xs" title={assignee.participant_email}>
+                                                                                            👤 {assignee.participant_name}
+                                                                                        </span>
+                                                                                    ))}
+                                                                                </div>
                                                                             )}
                                                                         </div>
                                                                         <div className="flex items-center gap-2">

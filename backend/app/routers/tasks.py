@@ -6,9 +6,16 @@ from typing import List
 from datetime import datetime
 from app.database import get_db
 from app.models.user import User
-from app.models.task import Task, TaskGroup, POCTask, POCTaskGroup, TaskStatus
+from app.models.task import (
+    Task,
+    TaskGroup,
+    POCTask,
+    POCTaskGroup,
+    TaskStatus,
+    POCTaskAssignee,
+)
 from app.models.success_criteria import TaskSuccessCriteria
-from app.models.poc import POC
+from app.models.poc import POC, POCParticipant
 from app.models.task_template_resource import TaskTemplateResource
 from app.models.task_group_resource import TaskGroupResource
 from app.schemas.task import (
@@ -24,6 +31,8 @@ from app.schemas.task import (
     POCTaskGroupCreate,
     POCTaskGroupUpdate,
     POCTaskGroup as POCTaskGroupSchema,
+    POCTaskAssignRequest,
+    POCTaskAssignee as POCTaskAssigneeSchema,
 )
 from app.schemas.task_resource import (
     TaskResourceCreate,
@@ -372,7 +381,33 @@ def list_poc_tasks(
         .order_by(POCTask.sort_order)
         .all()
     )
-    return tasks
+
+    # Include assignees in the response
+    result = []
+    for task in tasks:
+        task_dict = POCTaskSchema.model_validate(task).model_dump()
+
+        # Get assignees for this task
+        assignees = (
+            db.query(POCTaskAssignee)
+            .filter(POCTaskAssignee.poc_task_id == task.id)
+            .all()
+        )
+
+        task_dict["assignees"] = [
+            POCTaskAssigneeSchema(
+                id=a.id,
+                participant_id=a.participant_id,
+                participant_name=a.participant.user.full_name,
+                participant_email=a.participant.user.email,
+                assigned_at=a.assigned_at,
+            )
+            for a in assignees
+        ]
+
+        result.append(task_dict)
+
+    return result
 
 
 @router.put("/pocs/{poc_id}/tasks/{task_id}", response_model=POCTaskSchema)
@@ -428,6 +463,174 @@ def delete_poc_task(
     db.delete(poc_task)
     db.commit()
     return {"message": "Task removed successfully"}
+
+
+# Task Assignment Endpoints
+@router.post(
+    "/pocs/{poc_id}/tasks/{task_id}/assign",
+    response_model=List[POCTaskAssigneeSchema],
+)
+def assign_task_to_participants(
+    poc_id: int,
+    task_id: int,
+    assign_data: POCTaskAssignRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_sales_engineer),
+):
+    """Assign a POC task to one or more participants"""
+    # Verify task exists and belongs to POC
+    poc_task = (
+        db.query(POCTask)
+        .filter(POCTask.id == task_id, POCTask.poc_id == poc_id)
+        .first()
+    )
+    if not poc_task:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Task not found"
+        )
+
+    # Verify POC exists and user has access
+    poc = db.query(POC).filter(POC.id == poc_id).first()
+    if not poc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="POC not found"
+        )
+
+    if not check_tenant_access(current_user, poc.tenant_id):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Access denied"
+        )
+
+    # Get all valid participants for this POC
+    valid_participant_ids = [
+        p.id
+        for p in db.query(POCParticipant)
+        .filter(POCParticipant.poc_id == poc_id)
+        .all()
+    ]
+
+    # Validate that all requested participant IDs are valid
+    invalid_ids = [
+        pid
+        for pid in assign_data.participant_ids
+        if pid not in valid_participant_ids
+    ]
+    if invalid_ids:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid participant IDs: {invalid_ids}",
+        )
+
+    # Remove existing assignments
+    db.query(POCTaskAssignee).filter(
+        POCTaskAssignee.poc_task_id == task_id
+    ).delete()
+
+    # Create new assignments
+    new_assignees = []
+    for participant_id in assign_data.participant_ids:
+        assignee = POCTaskAssignee(
+            poc_task_id=task_id,
+            participant_id=participant_id,
+            assigned_by=current_user.id,
+        )
+        db.add(assignee)
+        new_assignees.append(assignee)
+
+    db.commit()
+
+    # Refresh and return with participant details
+    result = []
+    for assignee in new_assignees:
+        db.refresh(assignee)
+        participant = assignee.participant
+        result.append(
+            POCTaskAssigneeSchema(
+                id=assignee.id,
+                participant_id=assignee.participant_id,
+                participant_name=participant.user.full_name,
+                participant_email=participant.user.email,
+                assigned_at=assignee.assigned_at,
+            )
+        )
+
+    return result
+
+
+@router.get(
+    "/pocs/{poc_id}/tasks/{task_id}/assignees",
+    response_model=List[POCTaskAssigneeSchema],
+)
+def get_task_assignees(
+    poc_id: int,
+    task_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Get all assignees for a POC task"""
+    # Verify task exists
+    poc_task = (
+        db.query(POCTask)
+        .filter(POCTask.id == task_id, POCTask.poc_id == poc_id)
+        .first()
+    )
+    if not poc_task:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Task not found"
+        )
+
+    # Get assignees with participant details
+    assignees = (
+        db.query(POCTaskAssignee)
+        .filter(POCTaskAssignee.poc_task_id == task_id)
+        .all()
+    )
+
+    result = []
+    for assignee in assignees:
+        participant = assignee.participant
+        result.append(
+            POCTaskAssigneeSchema(
+                id=assignee.id,
+                participant_id=assignee.participant_id,
+                participant_name=participant.user.full_name,
+                participant_email=participant.user.email,
+                assigned_at=assignee.assigned_at,
+            )
+        )
+
+    return result
+
+
+@router.delete("/pocs/{poc_id}/tasks/{task_id}/assign")
+def unassign_all_participants(
+    poc_id: int,
+    task_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_sales_engineer),
+):
+    """Remove all assignees from a task"""
+    # Verify task exists
+    poc_task = (
+        db.query(POCTask)
+        .filter(POCTask.id == task_id, POCTask.poc_id == poc_id)
+        .first()
+    )
+    if not poc_task:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Task not found"
+        )
+
+    # Delete all assignments
+    deleted_count = (
+        db.query(POCTaskAssignee)
+        .filter(POCTaskAssignee.poc_task_id == task_id)
+        .delete()
+    )
+
+    db.commit()
+
+    return {"message": f"Removed {deleted_count} assignee(s) from task"}
 
 
 # POC Task Groups

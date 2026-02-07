@@ -24,7 +24,8 @@ POC Manager is a multi-tenant web application designed to streamline the entire 
 - Reusable task and task group templates
 - Progress tracking with visual indicators
 - Status management (Not Started, In Progress, Completed, Blocked)
-- Task assignment and completion workflow
+- Task assignment to POC participants
+- Clear ownership and accountability
 
 ### 📚 **Resource Management**
 - Attach multiple resources to tasks (links, code snippets, text notes, files)
@@ -69,6 +70,7 @@ POC Manager is a multi-tenant web application designed to streamline the entire 
     - [Dashboard](features/dashboard.md)
     - [Comments System](features/comments.md)
     - [Resources](features/resources.md)
+    - [Task Assignment](features/task-assignment.md)
     - [Document Generation](features/documents.md)
 
 ## Getting Help
