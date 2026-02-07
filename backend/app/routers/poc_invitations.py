@@ -1,4 +1,5 @@
 """POC Invitation router"""
+
 from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks
 from sqlalchemy.orm import Session
 from typing import List
@@ -9,6 +10,7 @@ from app.database import get_db
 from app.models.user import User, UserRole
 from app.models.poc import POC, POCParticipant
 from app.models.poc_invitation import POCInvitation, POCInvitationStatus
+from app.models.user_tenant_role import UserTenantRole
 from app.schemas.poc_invitation import (
     POCInvitationCreate,
     POCInvitationResponse,
@@ -18,8 +20,12 @@ from app.schemas.poc_invitation import (
 from app.auth import get_current_user, get_password_hash
 from app.services.email import send_poc_invitation_email_with_tracking
 
-router = APIRouter(prefix="/pocs/{poc_id}/invitations", tags=["POC Invitations"])
-public_router = APIRouter(prefix="/poc-invitations", tags=["POC Invitations - Public"])
+router = APIRouter(
+    prefix="/pocs/{poc_id}/invitations", tags=["POC Invitations"]
+)
+public_router = APIRouter(
+    prefix="/poc-invitations", tags=["POC Invitations - Public"]
+)
 
 
 def generate_invitation_token() -> str:
@@ -27,13 +33,17 @@ def generate_invitation_token() -> str:
     return secrets.token_urlsafe(32)
 
 
-@router.post("/", response_model=POCInvitationResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/",
+    response_model=POCInvitationResponse,
+    status_code=status.HTTP_201_CREATED,
+)
 async def create_poc_invitation(
     poc_id: int,
     invitation_data: POCInvitationCreate,
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """Create a POC invitation"""
     # Check if POC exists and user has access
@@ -43,44 +53,57 @@ async def create_poc_invitation(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="POC not found",
         )
-    
+
     # Check if user has permission (must be in same tenant or Platform Admin)
-    if current_user.role != UserRole.PLATFORM_ADMIN and current_user.tenant_id != poc.tenant_id:
+    if (
+        current_user.role != UserRole.PLATFORM_ADMIN
+        and current_user.tenant_id != poc.tenant_id
+    ):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Insufficient permissions",
         )
-    
+
     # Check for existing pending invitation
-    existing_invitation = db.query(POCInvitation).filter(
-        POCInvitation.poc_id == poc_id,
-        POCInvitation.email == invitation_data.email,
-        POCInvitation.status == POCInvitationStatus.PENDING
-    ).first()
-    
+    existing_invitation = (
+        db.query(POCInvitation)
+        .filter(
+            POCInvitation.poc_id == poc_id,
+            POCInvitation.email == invitation_data.email,
+            POCInvitation.status == POCInvitationStatus.PENDING,
+        )
+        .first()
+    )
+
     if existing_invitation:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Pending invitation already exists for this email",
         )
-    
+
     # Check if user is already a participant
-    existing_user = db.query(User).filter(User.email == invitation_data.email).first()
+    existing_user = (
+        db.query(User).filter(User.email == invitation_data.email).first()
+    )
     if existing_user:
-        existing_participant = db.query(POCParticipant).filter(
-            POCParticipant.poc_id == poc_id,
-            POCParticipant.user_id == existing_user.id
-        ).first()
+        existing_participant = (
+            db.query(POCParticipant)
+            .filter(
+                POCParticipant.poc_id == poc_id,
+                POCParticipant.user_id == existing_user.id,
+            )
+            .first()
+        )
         if existing_participant:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="User is already a participant in this POC",
             )
-    
+
     # Create invitation with 24-hour expiry
     token = generate_invitation_token()
     expires_at = datetime.now(timezone.utc) + timedelta(hours=24)
-    
+
     invitation = POCInvitation(
         poc_id=poc_id,
         email=invitation_data.email,
@@ -92,13 +115,13 @@ async def create_poc_invitation(
         personal_message=invitation_data.personal_message,
         expires_at=expires_at,
         email_sent=False,
-        resend_count=0
+        resend_count=0,
     )
-    
+
     db.add(invitation)
     db.commit()
     db.refresh(invitation)
-    
+
     # Send invitation email in background
     background_tasks.add_task(
         send_poc_invitation_email_with_tracking,
@@ -109,9 +132,9 @@ async def create_poc_invitation(
         token=token,
         invited_by_name=current_user.full_name,
         personal_message=invitation_data.personal_message,
-        tenant=poc.tenant
+        tenant=poc.tenant,
     )
-    
+
     return invitation
 
 
@@ -120,7 +143,7 @@ def list_poc_invitations(
     poc_id: int,
     status_filter: POCInvitationStatus = None,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """List all invitations for a POC"""
     # Check if POC exists and user has access
@@ -130,19 +153,22 @@ def list_poc_invitations(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="POC not found",
         )
-    
+
     # Check permissions
-    if current_user.role != UserRole.PLATFORM_ADMIN and current_user.tenant_id != poc.tenant_id:
+    if (
+        current_user.role != UserRole.PLATFORM_ADMIN
+        and current_user.tenant_id != poc.tenant_id
+    ):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Insufficient permissions",
         )
-    
+
     query = db.query(POCInvitation).filter(POCInvitation.poc_id == poc_id)
-    
+
     if status_filter:
         query = query.filter(POCInvitation.status == status_filter)
-    
+
     invitations = query.order_by(POCInvitation.created_at.desc()).all()
     return invitations
 
@@ -153,35 +179,45 @@ async def resend_poc_invitation(
     invitation_id: int,
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """Resend a POC invitation (for pending, expired, or failed invitations)"""
-    invitation = db.query(POCInvitation).filter(
-        POCInvitation.id == invitation_id,
-        POCInvitation.poc_id == poc_id
-    ).first()
-    
+    invitation = (
+        db.query(POCInvitation)
+        .filter(
+            POCInvitation.id == invitation_id, POCInvitation.poc_id == poc_id
+        )
+        .first()
+    )
+
     if not invitation:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Invitation not found",
         )
-    
+
     # Check permissions
     poc = invitation.poc
-    if current_user.role != UserRole.PLATFORM_ADMIN and current_user.tenant_id != poc.tenant_id:
+    if (
+        current_user.role != UserRole.PLATFORM_ADMIN
+        and current_user.tenant_id != poc.tenant_id
+    ):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Insufficient permissions",
         )
-    
+
     # Only allow resending for pending, expired or failed invitations
-    if invitation.status not in [POCInvitationStatus.PENDING, POCInvitationStatus.EXPIRED, POCInvitationStatus.FAILED]:
+    if invitation.status not in [
+        POCInvitationStatus.PENDING,
+        POCInvitationStatus.EXPIRED,
+        POCInvitationStatus.FAILED,
+    ]:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Cannot resend invitation with status: {invitation.status.value}",
         )
-    
+
     # Generate new token and extend expiry
     invitation.token = generate_invitation_token()
     invitation.expires_at = datetime.now(timezone.utc) + timedelta(hours=24)
@@ -190,10 +226,10 @@ async def resend_poc_invitation(
     invitation.email_error = None
     invitation.resend_count += 1
     invitation.last_resent_at = datetime.now(timezone.utc)
-    
+
     db.commit()
     db.refresh(invitation)
-    
+
     # Send invitation email in background
     background_tasks.add_task(
         send_poc_invitation_email_with_tracking,
@@ -204,9 +240,9 @@ async def resend_poc_invitation(
         token=invitation.token,
         invited_by_name=invitation.inviter.full_name,
         personal_message=invitation.personal_message,
-        tenant=poc.tenant
+        tenant=poc.tenant,
     )
-    
+
     return invitation
 
 
@@ -215,62 +251,68 @@ def revoke_poc_invitation(
     poc_id: int,
     invitation_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """Revoke a pending POC invitation"""
-    invitation = db.query(POCInvitation).filter(
-        POCInvitation.id == invitation_id,
-        POCInvitation.poc_id == poc_id
-    ).first()
-    
+    invitation = (
+        db.query(POCInvitation)
+        .filter(
+            POCInvitation.id == invitation_id, POCInvitation.poc_id == poc_id
+        )
+        .first()
+    )
+
     if not invitation:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Invitation not found",
         )
-    
+
     # Check permissions
     poc = invitation.poc
-    if current_user.role != UserRole.PLATFORM_ADMIN and current_user.tenant_id != poc.tenant_id:
+    if (
+        current_user.role != UserRole.PLATFORM_ADMIN
+        and current_user.tenant_id != poc.tenant_id
+    ):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Insufficient permissions",
         )
-    
+
     if invitation.status != POCInvitationStatus.PENDING:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Cannot revoke invitation with status: {invitation.status.value}",
         )
-    
+
     invitation.status = POCInvitationStatus.REVOKED
     db.commit()
-    
+
     return {"message": "Invitation revoked successfully"}
 
 
 # Public endpoints (no authentication required)
 
+
 @public_router.get("/validate/{token}", response_model=POCInvitationToken)
-def validate_poc_invitation(
-    token: str,
-    db: Session = Depends(get_db)
-):
+def validate_poc_invitation(token: str, db: Session = Depends(get_db)):
     """Validate a POC invitation token (public endpoint)"""
-    invitation = db.query(POCInvitation).filter(POCInvitation.token == token).first()
-    
+    invitation = (
+        db.query(POCInvitation).filter(POCInvitation.token == token).first()
+    )
+
     if not invitation:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Invitation not found",
         )
-    
+
     if invitation.status != POCInvitationStatus.PENDING:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Invitation is {invitation.status.value}",
         )
-    
+
     if invitation.expires_at < datetime.now(timezone.utc):
         invitation.status = POCInvitationStatus.EXPIRED
         db.commit()
@@ -278,10 +320,13 @@ def validate_poc_invitation(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invitation has expired",
         )
-    
+
     # Check if user already exists
-    user_exists = db.query(User).filter(User.email == invitation.email).first() is not None
-    
+    user_exists = (
+        db.query(User).filter(User.email == invitation.email).first()
+        is not None
+    )
+
     return POCInvitationToken(
         poc_id=invitation.poc_id,
         poc_title=invitation.poc.title,
@@ -291,30 +336,33 @@ def validate_poc_invitation(
         invited_by_name=invitation.inviter.full_name,
         expires_at=invitation.expires_at,
         personal_message=invitation.personal_message,
-        user_exists=user_exists
+        user_exists=user_exists,
     )
 
 
 @public_router.post("/accept", status_code=status.HTTP_201_CREATED)
 def accept_poc_invitation(
-    accept_data: POCInvitationAccept,
-    db: Session = Depends(get_db)
+    accept_data: POCInvitationAccept, db: Session = Depends(get_db)
 ):
     """Accept a POC invitation (public endpoint)"""
-    invitation = db.query(POCInvitation).filter(POCInvitation.token == accept_data.token).first()
-    
+    invitation = (
+        db.query(POCInvitation)
+        .filter(POCInvitation.token == accept_data.token)
+        .first()
+    )
+
     if not invitation:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Invitation not found",
         )
-    
+
     if invitation.status != POCInvitationStatus.PENDING:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Invitation is {invitation.status.value}",
         )
-    
+
     if invitation.expires_at < datetime.now(timezone.utc):
         invitation.status = POCInvitationStatus.EXPIRED
         db.commit()
@@ -322,10 +370,11 @@ def accept_poc_invitation(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invitation has expired",
         )
-    
+
     # Check if user already exists
     user = db.query(User).filter(User.email == invitation.email).first()
-    
+    poc = invitation.poc
+
     if not user:
         # New user - password is required
         if not accept_data.password:
@@ -333,45 +382,80 @@ def accept_poc_invitation(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Password is required for new users",
             )
-        
+
         # Create new user account
-        poc = invitation.poc
         user = User(
             email=invitation.email,
             full_name=invitation.full_name,
             hashed_password=get_password_hash(accept_data.password),
-            role=UserRole.CUSTOMER if invitation.is_customer else UserRole.SALES_ENGINEER,
-            tenant_id=poc.tenant_id,
+            role=(
+                UserRole.CUSTOMER
+                if invitation.is_customer
+                else UserRole.SALES_ENGINEER
+            ),
+            tenant_id=poc.tenant_id,  # Keep for backward compatibility
             is_active=True,
         )
         db.add(user)
         db.flush()
+
+        # Create UserTenantRole entry for multi-tenant support
+        # This is required for login to work properly
+        user_tenant_role = UserTenantRole(
+            user_id=user.id,
+            tenant_id=poc.tenant_id,
+            role=(
+                UserRole.CUSTOMER
+                if invitation.is_customer
+                else UserRole.SALES_ENGINEER
+            ),
+            is_default=True,  # First tenant is default
+        )
+        db.add(user_tenant_role)
+        db.flush()
     else:
-        # Existing user - verify they're in the same tenant
-        poc = invitation.poc
-        if user.tenant_id != poc.tenant_id:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="User belongs to a different tenant",
+        # Existing user - check if they have access to this tenant
+        existing_tenant_role = (
+            db.query(UserTenantRole)
+            .filter(
+                UserTenantRole.user_id == user.id,
+                UserTenantRole.tenant_id == poc.tenant_id,
             )
-    
+            .first()
+        )
+
+        # If user doesn't have access to this tenant yet, add them
+        if not existing_tenant_role:
+            user_tenant_role = UserTenantRole(
+                user_id=user.id,
+                tenant_id=poc.tenant_id,
+                role=(
+                    UserRole.CUSTOMER
+                    if invitation.is_customer
+                    else UserRole.SALES_ENGINEER
+                ),
+                is_default=False,  # Not default for existing users
+            )
+            db.add(user_tenant_role)
+            db.flush()
+
     # Add user as POC participant
     participant = POCParticipant(
         poc_id=invitation.poc_id,
         user_id=user.id,
         is_sales_engineer=not invitation.is_customer,
-        is_customer=invitation.is_customer
+        is_customer=invitation.is_customer,
     )
     db.add(participant)
-    
+
     # Mark invitation as accepted
     invitation.status = POCInvitationStatus.ACCEPTED
     invitation.accepted_at = datetime.now(timezone.utc)
-    
+
     db.commit()
-    
+
     return {
         "message": "Invitation accepted successfully",
         "user_created": user.id,
-        "poc_id": invitation.poc_id
+        "poc_id": invitation.poc_id,
     }
