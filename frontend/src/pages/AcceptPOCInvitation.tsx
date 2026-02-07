@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { api } from '../lib/api'
 import toast from 'react-hot-toast'
+import { useAuthStore } from '../store/authStore'
 
 interface InvitationData {
     poc_id: number
@@ -18,6 +19,7 @@ interface InvitationData {
 export default function AcceptPOCInvitation() {
     const [searchParams] = useSearchParams()
     const navigate = useNavigate()
+    const { user } = useAuthStore()
     const token = searchParams.get('token')
 
     const [loading, setLoading] = useState(true)
@@ -40,6 +42,19 @@ export default function AcceptPOCInvitation() {
         try {
             const response = await api.get(`/poc-invitations/validate/${token}`)
             setInvitationData(response.data)
+
+            // If user exists but not logged in, redirect to login
+            if (response.data.user_exists && !user) {
+                toast.error('Please log in to accept this invitation')
+                setTimeout(() => {
+                    navigate('/login', {
+                        state: {
+                            message: 'Please log in to accept the POC invitation',
+                            redirectTo: `/accept-poc-invitation?token=${token}`
+                        }
+                    })
+                }, 1500)
+            }
         } catch (err: any) {
             setError(err.response?.data?.detail || 'Invalid or expired invitation')
         } finally {
@@ -72,24 +87,33 @@ export default function AcceptPOCInvitation() {
         setError('')
 
         try {
-            await api.post('/poc-invitations/accept', {
-                token,
-                password: invitationData?.user_exists ? undefined : password
-            })
+            if (invitationData?.user_exists) {
+                // Existing user - use authenticated endpoint
+                await api.post('/poc-invitations/accept-existing', { token })
+                toast.success('Invitation accepted successfully!')
 
-            toast.success('Invitation accepted successfully!')
-
-            // Redirect to login
-            setTimeout(() => {
-                navigate('/login', {
-                    state: {
-                        message: invitationData?.user_exists
-                            ? 'You have been added to the POC. Please log in to continue.'
-                            : 'Your account has been created. Please log in to continue.',
-                        email: invitationData?.email
-                    }
+                // Redirect to POC view
+                setTimeout(() => {
+                    navigate(`/pocs/${invitationData.poc_id}`)
+                }, 1500)
+            } else {
+                // New user - use public endpoint with password
+                await api.post('/poc-invitations/accept', {
+                    token,
+                    password
                 })
-            }, 1500)
+                toast.success('Account created successfully!')
+
+                // Redirect to login
+                setTimeout(() => {
+                    navigate('/login', {
+                        state: {
+                            message: 'Your account has been created. Please log in to continue.',
+                            email: invitationData?.email
+                        }
+                    })
+                }, 1500)
+            }
         } catch (err: any) {
             setError(err.response?.data?.detail || 'Failed to accept invitation')
         } finally {
@@ -170,7 +194,11 @@ export default function AcceptPOCInvitation() {
                                 <div className="ml-3">
                                     <p className="text-sm text-blue-700">
                                         {invitationData.user_exists ? (
-                                            <>Your account (<strong>{invitationData.email}</strong>) will be added to this POC. You can log in using your existing credentials.</>
+                                            user ? (
+                                                <>You are logged in as <strong>{user.email}</strong>. Click "Accept Invitation" to be added to this POC.</>
+                                            ) : (
+                                                <>Your account (<strong>{invitationData.email}</strong>) already exists. Please log in to accept this invitation.</>
+                                            )
                                         ) : (
                                             <>A new account will be created for <strong>{invitationData.email}</strong>. Please set a password below.</>
                                         )}

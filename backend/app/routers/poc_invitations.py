@@ -344,7 +344,11 @@ def validate_poc_invitation(token: str, db: Session = Depends(get_db)):
 def accept_poc_invitation(
     accept_data: POCInvitationAccept, db: Session = Depends(get_db)
 ):
-    """Accept a POC invitation (public endpoint)"""
+    """Accept a POC invitation
+
+    For new users: Requires password, creates account and adds to POC
+    For existing users: They should use the authenticated endpoint /accept-existing
+    """
     invitation = (
         db.query(POCInvitation)
         .filter(POCInvitation.token == accept_data.token)
@@ -375,69 +379,50 @@ def accept_poc_invitation(
     user = db.query(User).filter(User.email == invitation.email).first()
     poc = invitation.poc
 
-    if not user:
-        # New user - password is required
-        if not accept_data.password:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Password is required for new users",
-            )
-
-        # Create new user account
-        user = User(
-            email=invitation.email,
-            full_name=invitation.full_name,
-            hashed_password=get_password_hash(accept_data.password),
-            role=(
-                UserRole.CUSTOMER
-                if invitation.is_customer
-                else UserRole.SALES_ENGINEER
-            ),
-            tenant_id=poc.tenant_id,  # Keep for backward compatibility
-            is_active=True,
-        )
-        db.add(user)
-        db.flush()
-
-        # Create UserTenantRole entry for multi-tenant support
-        # This is required for login to work properly
-        user_tenant_role = UserTenantRole(
-            user_id=user.id,
-            tenant_id=poc.tenant_id,
-            role=(
-                UserRole.CUSTOMER
-                if invitation.is_customer
-                else UserRole.SALES_ENGINEER
-            ),
-            is_default=True,  # First tenant is default
-        )
-        db.add(user_tenant_role)
-        db.flush()
-    else:
-        # Existing user - check if they have access to this tenant
-        existing_tenant_role = (
-            db.query(UserTenantRole)
-            .filter(
-                UserTenantRole.user_id == user.id,
-                UserTenantRole.tenant_id == poc.tenant_id,
-            )
-            .first()
+    if user:
+        # Existing user - they must use the authenticated endpoint
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="User already exists. Please login and use the authenticated acceptance endpoint.",
         )
 
-        # If user doesn't have access to this tenant yet, add them
-        if not existing_tenant_role:
-            user_tenant_role = UserTenantRole(
-                user_id=user.id,
-                tenant_id=poc.tenant_id,
-                role=(
-                    UserRole.CUSTOMER
-                    if invitation.is_customer
-                    else UserRole.SALES_ENGINEER
-                ),
-                is_default=False,  # Not default for existing users
-            )
-            db.add(user_tenant_role)
-            db.flush()
+    # New user - password is required
+    if not accept_data.password:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Password is required for new users",
+        )
+
+    # Create new user account
+    user = User(
+        email=invitation.email,
+        full_name=invitation.full_name,
+        hashed_password=get_password_hash(accept_data.password),
+        role=(
+            UserRole.CUSTOMER
+            if invitation.is_customer
+            else UserRole.SALES_ENGINEER
+        ),
+        tenant_id=poc.tenant_id,  # Keep for backward compatibility
+        is_active=True,
+    )
+    db.add(user)
+    db.flush()
+
+    # Create UserTenantRole entry for multi-tenant support
+    # This is required for login to work properly
+    user_tenant_role = UserTenantRole(
+        user_id=user.id,
+        tenant_id=poc.tenant_id,
+        role=(
+            UserRole.CUSTOMER
+            if invitation.is_customer
+            else UserRole.SALES_ENGINEER
+        ),
+        is_default=True,  # First tenant is default
+    )
+    db.add(user_tenant_role)
+    db.flush()
 
     # Add user as POC participant
     participant = POCParticipant(
@@ -457,5 +442,113 @@ def accept_poc_invitation(
     return {
         "message": "Invitation accepted successfully",
         "user_created": user.id,
+        "poc_id": invitation.poc_id,
+    }
+
+
+@public_router.post("/accept-existing", status_code=status.HTTP_200_OK)
+def accept_poc_invitation_existing_user(
+    accept_data: POCInvitationAccept,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Accept a POC invitation for an existing user (requires authentication)
+
+    Existing users must be logged in to accept invitations.
+    No password is required since they already have an account.
+    """
+    invitation = (
+        db.query(POCInvitation)
+        .filter(POCInvitation.token == accept_data.token)
+        .first()
+    )
+
+    if not invitation:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Invitation not found",
+        )
+
+    if invitation.status != POCInvitationStatus.PENDING:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invitation is {invitation.status.value}",
+        )
+
+    if invitation.expires_at < datetime.now(timezone.utc):
+        invitation.status = POCInvitationStatus.EXPIRED
+        db.commit()
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invitation has expired",
+        )
+
+    # Verify the invitation is for the current logged-in user
+    if invitation.email != current_user.email:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="This invitation is not for your email address",
+        )
+
+    poc = invitation.poc
+
+    # Check if user already has access to this tenant
+    existing_tenant_role = (
+        db.query(UserTenantRole)
+        .filter(
+            UserTenantRole.user_id == current_user.id,
+            UserTenantRole.tenant_id == poc.tenant_id,
+        )
+        .first()
+    )
+
+    # If user doesn't have access to this tenant yet, add them
+    if not existing_tenant_role:
+        user_tenant_role = UserTenantRole(
+            user_id=current_user.id,
+            tenant_id=poc.tenant_id,
+            role=(
+                UserRole.CUSTOMER
+                if invitation.is_customer
+                else UserRole.SALES_ENGINEER
+            ),
+            is_default=False,  # Not default for existing users
+        )
+        db.add(user_tenant_role)
+        db.flush()
+
+    # Check if user is already a participant
+    existing_participant = (
+        db.query(POCParticipant)
+        .filter(
+            POCParticipant.poc_id == invitation.poc_id,
+            POCParticipant.user_id == current_user.id,
+        )
+        .first()
+    )
+
+    if existing_participant:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="You are already a participant in this POC",
+        )
+
+    # Add user as POC participant
+    participant = POCParticipant(
+        poc_id=invitation.poc_id,
+        user_id=current_user.id,
+        is_sales_engineer=not invitation.is_customer,
+        is_customer=invitation.is_customer,
+    )
+    db.add(participant)
+
+    # Mark invitation as accepted
+    invitation.status = POCInvitationStatus.ACCEPTED
+    invitation.accepted_at = datetime.now(timezone.utc)
+
+    db.commit()
+
+    return {
+        "message": "Invitation accepted successfully",
         "poc_id": invitation.poc_id,
     }
