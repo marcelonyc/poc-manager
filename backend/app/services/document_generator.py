@@ -345,8 +345,6 @@ class DocumentGenerator:
             md_content.append("## Products\n")
             for product in self.poc.products:
                 md_content.append(f"- **{product.name}**")
-                if product.description:
-                    md_content.append(f"  {product.description}")
             md_content.append("")
 
         # Individual Tasks
