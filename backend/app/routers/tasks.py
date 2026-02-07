@@ -789,16 +789,8 @@ def get_poc_task_group_tasks(
 
             result = []
             for task in poc_tasks:
-                task_dict = {
-                    "id": task.id,
-                    "title": task.title,
-                    "description": task.description,
-                    "task_id": task.task_id,
-                    "success_criteria_ids": task.success_criteria_ids,
-                    "sort_order": task.sort_order,
-                    "status": task.status,
-                    "assignees": [],
-                }
+                # Use POCTaskSchema to properly serialize the task
+                task_dict = POCTaskSchema.model_validate(task).model_dump()
 
                 # Get assignees for this task
                 assignees = (
@@ -807,19 +799,17 @@ def get_poc_task_group_tasks(
                     .all()
                 )
 
-                for assignee in assignees:
-                    participant = assignee.participant
-                    if participant and participant.user:
-                        task_dict["assignees"].append(
-                            POCTaskAssigneeSchema(
-                                id=assignee.id,
-                                participant_id=assignee.participant_id,
-                                participant_name=participant.user.full_name
-                                or participant.user.email,
-                                participant_email=participant.user.email,
-                                assigned_at=assignee.assigned_at,
-                            ).dict()
-                        )
+                task_dict["assignees"] = [
+                    POCTaskAssigneeSchema(
+                        id=a.id,
+                        participant_id=a.participant_id,
+                        participant_name=a.participant.user.full_name
+                        or a.participant.user.email,
+                        participant_email=a.participant.user.email,
+                        assigned_at=a.assigned_at,
+                    ).model_dump()
+                    for a in assignees
+                ]
 
                 result.append(task_dict)
 
