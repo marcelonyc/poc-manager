@@ -1574,6 +1574,16 @@ export default function POCForm({ pocId, initialData, onClose }: POCFormProps) {
                                                                                     })}
                                                                                 </div>
                                                                             )}
+                                                                            {task.assignees && task.assignees.length > 0 && (
+                                                                                <div className="mt-2 flex flex-wrap gap-1">
+                                                                                    <span className="text-xs text-gray-600 mr-1">Assigned to:</span>
+                                                                                    {task.assignees.map(assignee => (
+                                                                                        <span key={assignee.id} className="px-2 py-0.5 bg-blue-100 text-blue-800 rounded text-xs" title={assignee.participant_email}>
+                                                                                            👤 {assignee.participant_name}
+                                                                                        </span>
+                                                                                    ))}
+                                                                                </div>
+                                                                            )}
                                                                         </div>
                                                                         {pocId && (
                                                                             <div className="flex items-center gap-2">
@@ -1587,6 +1597,13 @@ export default function POCForm({ pocId, initialData, onClose }: POCFormProps) {
                                                                                     <option value="completed">Completed</option>
                                                                                     <option value="blocked">Blocked</option>
                                                                                 </select>
+                                                                                <button
+                                                                                    onClick={() => handleOpenAssignmentModal(task)}
+                                                                                    className="px-2 py-1 bg-indigo-100 text-indigo-700 rounded hover:bg-indigo-200 text-xs"
+                                                                                    title="Assign Participants"
+                                                                                >
+                                                                                    👥
+                                                                                </button>
                                                                                 <button
                                                                                     onClick={() => {
                                                                                         setCommentsModalTaskId(task.id)
