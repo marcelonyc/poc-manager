@@ -1,6 +1,7 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { useAuthStore } from './store/authStore'
 import Login from './pages/Login'
+import TenantSelection from './pages/TenantSelection'
 import ForgotPassword from './pages/ForgotPassword'
 import ResetPassword from './pages/ResetPassword'
 import DemoRequest from './pages/DemoRequest'
@@ -30,6 +31,7 @@ function App() {
         <>
             <Routes>
                 <Route path="/login" element={<Login />} />
+                <Route path="/tenant-selection" element={<TenantSelection />} />
                 <Route path="/forgot-password" element={<ForgotPassword />} />
                 <Route path="/reset-password" element={<ResetPassword />} />
                 <Route path="/demo/request" element={<DemoRequest />} />
