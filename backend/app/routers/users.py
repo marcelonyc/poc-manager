@@ -440,11 +440,6 @@ def reactivate_user(
         db.commit()
         return {"message": "User reactivated at platform level"}
 
-    user_tenant_role.is_active = True
-    db.commit()
-
-    return {"message": "User reactivated in tenant successfully"}
-
 
 @router.get(
     "/{user_id}/tenant-roles", response_model=List[UserTenantRoleSchema]

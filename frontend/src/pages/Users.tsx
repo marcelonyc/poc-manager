@@ -78,7 +78,13 @@ export default function Users() {
 
     const toggleUserStatus = async (userId: number, currentStatus: boolean) => {
         try {
-            await api.put(`/users/${userId}`, { is_active: !currentStatus })
+            if (currentStatus) {
+                // Deactivate user - use DELETE endpoint
+                await api.delete(`/users/${userId}`)
+            } else {
+                // Activate user - use POST reactivate endpoint
+                await api.post(`/users/${userId}/reactivate`)
+            }
             toast.success(`User ${!currentStatus ? 'activated' : 'deactivated'}`)
             fetchUsers()
         } catch (error: any) {
@@ -308,8 +314,8 @@ export default function Users() {
                                     <td className="px-6 py-4 whitespace-nowrap">
                                         <span
                                             className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${user.is_active
-                                                    ? 'bg-green-100 text-green-800'
-                                                    : 'bg-red-100 text-red-800'
+                                                ? 'bg-green-100 text-green-800'
+                                                : 'bg-red-100 text-red-800'
                                                 }`}
                                         >
                                             {user.is_active ? 'Active' : 'Inactive'}
@@ -328,8 +334,8 @@ export default function Users() {
                                             <button
                                                 onClick={() => toggleUserStatus(user.id, user.is_active)}
                                                 className={`${user.is_active
-                                                        ? 'text-red-600 hover:text-red-900'
-                                                        : 'text-green-600 hover:text-green-900'
+                                                    ? 'text-red-600 hover:text-red-900'
+                                                    : 'text-green-600 hover:text-green-900'
                                                     }`}
                                             >
                                                 {user.is_active ? 'Deactivate' : 'Activate'}
