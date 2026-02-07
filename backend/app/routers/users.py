@@ -148,7 +148,7 @@ def update_user(
     current_user: User = Depends(get_current_user),
     tenant_id: int = Depends(get_current_tenant_id),
 ):
-    """Update user details"""
+    """Update user details (email, full_name only - not is_active)"""
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(
@@ -156,20 +156,71 @@ def update_user(
             detail="User not found",
         )
 
-    # Check permissions
-    if current_user.role != UserRole.PLATFORM_ADMIN:
-        if user.tenant_id != tenant_id or user.id == current_user.id:
-            if current_user.role not in [
-                UserRole.TENANT_ADMIN,
-                UserRole.ADMINISTRATOR,
-            ]:
-                raise HTTPException(
-                    status_code=status.HTTP_404_NOT_FOUND,
-                    detail="User not found",
-                )
+    # CRITICAL: Check tenant context first
+    # Tenant-scoped users cannot modify users table directly
+    if tenant_id is not None:
+        # User is in tenant context - query their role in this specific tenant
+        current_user_tenant_role = (
+            db.query(UserTenantRole)
+            .filter(
+                UserTenantRole.user_id == current_user.id,
+                UserTenantRole.tenant_id == tenant_id,
+            )
+            .first()
+        )
 
-    # Update fields
+        if not current_user_tenant_role:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You do not have access to this tenant",
+            )
+
+        current_role = current_user_tenant_role.role
+
+        # Tenant admins can only update users in their tenant
+        # But they CANNOT modify the users table - only user_tenant_roles
+        if current_role not in [UserRole.TENANT_ADMIN, UserRole.ADMINISTRATOR]:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Insufficient permissions",
+            )
+
+        # Check if target user belongs to this tenant
+        target_user_tenant_role = (
+            db.query(UserTenantRole)
+            .filter(
+                UserTenantRole.user_id == user_id,
+                UserTenantRole.tenant_id == tenant_id,
+            )
+            .first()
+        )
+
+        if not target_user_tenant_role and current_user.id != user_id:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User not found in this tenant",
+            )
+    else:
+        # No tenant context - must be platform admin
+        if (
+            current_user.role != UserRole.PLATFORM_ADMIN
+            and current_user.id != user_id
+        ):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Platform admin privileges required",
+            )
+
+    # Update fields (is_active is not in UserUpdate schema, so it cannot be modified here)
     update_data = user_data.dict(exclude_unset=True)
+
+    # Double-check: Ensure is_active cannot be modified via this endpoint
+    if "is_active" in update_data:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Use DELETE /users/{id} or POST /users/{id}/reactivate to modify activation status",
+        )
+
     for field, value in update_data.items():
         setattr(user, field, value)
 

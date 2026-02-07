@@ -1,4 +1,5 @@
 """User schemas"""
+
 from pydantic import BaseModel, EmailStr
 from typing import Optional
 from datetime import datetime
@@ -7,6 +8,7 @@ from app.models.user import UserRole
 
 class UserBase(BaseModel):
     """Base user schema"""
+
     email: EmailStr
     full_name: str
     role: UserRole
@@ -14,19 +16,22 @@ class UserBase(BaseModel):
 
 class UserCreate(UserBase):
     """Schema for creating a user"""
+
     password: str
     tenant_id: Optional[int] = None
 
 
 class UserUpdate(BaseModel):
     """Schema for updating a user"""
+
     email: Optional[EmailStr] = None
     full_name: Optional[str] = None
-    is_active: Optional[bool] = None
+    # is_active is NOT allowed here - use DELETE /users/{id} or POST /users/{id}/reactivate instead
 
 
 class UserInvite(BaseModel):
     """Schema for inviting a user"""
+
     email: EmailStr
     full_name: str
     role: UserRole
@@ -34,29 +39,33 @@ class UserInvite(BaseModel):
 
 class User(UserBase):
     """Schema for user response"""
+
     id: int
     is_active: bool
     tenant_id: Optional[int]
     created_at: datetime
     last_login: Optional[datetime]
-    
+
     class Config:
         from_attributes = True
 
 
 class Token(BaseModel):
     """Schema for authentication token"""
+
     access_token: str
     token_type: str = "bearer"
 
 
 class LoginRequest(BaseModel):
     """Schema for login request"""
+
     email: EmailStr
     password: str
 
 
 class PasswordChange(BaseModel):
     """Schema for password change"""
+
     old_password: str
     new_password: str
