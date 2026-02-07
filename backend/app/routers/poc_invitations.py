@@ -17,7 +17,7 @@ from app.schemas.poc_invitation import (
     POCInvitationAccept,
     POCInvitationToken,
 )
-from app.auth import get_current_user, get_password_hash
+from app.auth import get_current_user, get_password_hash, get_current_tenant_id
 from app.services.email import send_poc_invitation_email_with_tracking
 
 router = APIRouter(
@@ -44,6 +44,7 @@ async def create_poc_invitation(
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    tenant_id: int = Depends(get_current_tenant_id),
 ):
     """Create a POC invitation"""
     # Check if POC exists and user has access
@@ -57,7 +58,7 @@ async def create_poc_invitation(
     # Check if user has permission (must be in same tenant or Platform Admin)
     if (
         current_user.role != UserRole.PLATFORM_ADMIN
-        and current_user.tenant_id != poc.tenant_id
+        and tenant_id != poc.tenant_id
     ):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -144,6 +145,7 @@ def list_poc_invitations(
     status_filter: POCInvitationStatus = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    tenant_id: int = Depends(get_current_tenant_id),
 ):
     """List all invitations for a POC"""
     # Check if POC exists and user has access
@@ -157,7 +159,7 @@ def list_poc_invitations(
     # Check permissions
     if (
         current_user.role != UserRole.PLATFORM_ADMIN
-        and current_user.tenant_id != poc.tenant_id
+        and tenant_id != poc.tenant_id
     ):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -180,6 +182,7 @@ async def resend_poc_invitation(
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    tenant_id: int = Depends(get_current_tenant_id),
 ):
     """Resend a POC invitation (for pending, expired, or failed invitations)"""
     invitation = (
@@ -200,7 +203,7 @@ async def resend_poc_invitation(
     poc = invitation.poc
     if (
         current_user.role != UserRole.PLATFORM_ADMIN
-        and current_user.tenant_id != poc.tenant_id
+        and tenant_id != poc.tenant_id
     ):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -252,6 +255,7 @@ def revoke_poc_invitation(
     invitation_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    tenant_id: int = Depends(get_current_tenant_id),
 ):
     """Revoke a pending POC invitation"""
     invitation = (
@@ -272,7 +276,7 @@ def revoke_poc_invitation(
     poc = invitation.poc
     if (
         current_user.role != UserRole.PLATFORM_ADMIN
-        and current_user.tenant_id != poc.tenant_id
+        and tenant_id != poc.tenant_id
     ):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,

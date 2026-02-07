@@ -56,15 +56,16 @@ def create_task_template(
     task_data: TaskCreate,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_administrator),
+    tenant_id: int = Depends(get_current_tenant_id),
 ):
     """Create a reusable task template"""
     # Check demo limits
-    check_demo_task_limit(db, current_user.tenant_id, current_user.tenant)
+    check_demo_task_limit(db, tenant_id, current_user.tenant)
 
     task = Task(
         title=task_data.title,
         description=task_data.description,
-        tenant_id=current_user.tenant_id,
+        tenant_id=tenant_id,
         created_by=current_user.id,
         is_template=True,
     )
@@ -80,13 +81,12 @@ def list_task_templates(
     limit: int = 100,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    tenant_id: int = Depends(get_current_tenant_id),
 ):
     """List task templates"""
     tasks = (
         db.query(Task)
-        .filter(
-            Task.tenant_id == current_user.tenant_id, Task.is_template == True
-        )
+        .filter(Task.tenant_id == tenant_id, Task.is_template == True)
         .offset(skip)
         .limit(limit)
         .all()
@@ -100,17 +100,18 @@ def update_task_template(
     task_data: TaskUpdate,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_administrator),
+    tenant_id: int = Depends(get_current_tenant_id),
 ):
     """Update a task template"""
-    task = db.query(Task).filter(Task.id == task_id).first()
+    # Fetch with tenant filter to prevent enumeration
+    task = (
+        db.query(Task)
+        .filter(Task.id == task_id, Task.tenant_id == tenant_id)
+        .first()
+    )
     if not task:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Task not found"
-        )
-
-    if not check_tenant_access(current_user, task.tenant_id):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail="Access denied"
         )
 
     update_data = task_data.dict(exclude_unset=True)
@@ -132,17 +133,16 @@ def create_task_group_template(
     group_data: TaskGroupCreate,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_administrator),
+    tenant_id: int = Depends(get_current_tenant_id),
 ):
     """Create a reusable task group template"""
     # Check demo limits
-    check_demo_task_group_limit(
-        db, current_user.tenant_id, current_user.tenant
-    )
+    check_demo_task_group_limit(db, tenant_id, current_user.tenant)
 
     task_group = TaskGroup(
         title=group_data.title,
         description=group_data.description,
-        tenant_id=current_user.tenant_id,
+        tenant_id=tenant_id,
         created_by=current_user.id,
         is_template=True,
     )
@@ -158,12 +158,13 @@ def list_task_group_templates(
     limit: int = 100,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    tenant_id: int = Depends(get_current_tenant_id),
 ):
     """List task group templates"""
     groups = (
         db.query(TaskGroup)
         .filter(
-            TaskGroup.tenant_id == current_user.tenant_id,
+            TaskGroup.tenant_id == tenant_id,
             TaskGroup.is_template == True,
         )
         .offset(skip)
@@ -179,18 +180,19 @@ def update_task_group_template(
     group_data: TaskGroupUpdate,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_administrator),
+    tenant_id: int = Depends(get_current_tenant_id),
 ):
-    """Update a task group template"""
-    task_group = db.query(TaskGroup).filter(TaskGroup.id == group_id).first()
+    """Update a task group"""
+    # Fetch with tenant filter to prevent enumeration
+    task_group = (
+        db.query(TaskGroup)
+        .filter(TaskGroup.id == group_id, TaskGroup.tenant_id == tenant_id)
+        .first()
+    )
     if not task_group:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Task group not found",
-        )
-
-    if not check_tenant_access(current_user, task_group.tenant_id):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail="Access denied"
         )
 
     update_data = group_data.dict(exclude_unset=True)
@@ -207,18 +209,19 @@ def get_task_group_tasks(
     group_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    tenant_id: int = Depends(get_current_tenant_id),
 ):
     """Get tasks in a task group"""
-    group = db.query(TaskGroup).filter(TaskGroup.id == group_id).first()
+    # Fetch with tenant filter to prevent enumeration
+    group = (
+        db.query(TaskGroup)
+        .filter(TaskGroup.id == group_id, TaskGroup.tenant_id == tenant_id)
+        .first()
+    )
     if not group:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Task group not found",
-        )
-
-    if not check_tenant_access(current_user, group.tenant_id):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail="Access denied"
         )
 
     return group.tasks
@@ -593,22 +596,23 @@ def add_resource_to_task_template(
     resource_data: TaskResourceCreate,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_administrator),
+    tenant_id: int = Depends(get_current_tenant_id),
 ):
     """Add a resource to a task template"""
     # Check demo resource limit
     from app.utils.demo_limits import check_demo_resource_limit
 
-    check_demo_resource_limit(db, current_user.tenant_id, current_user.tenant)
+    check_demo_resource_limit(db, tenant_id, current_user.tenant)
 
-    task = db.query(Task).filter(Task.id == task_id).first()
+    # Fetch with tenant filter to prevent enumeration
+    task = (
+        db.query(Task)
+        .filter(Task.id == task_id, Task.tenant_id == tenant_id)
+        .first()
+    )
     if not task:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Task not found"
-        )
-
-    if not check_tenant_access(current_user, task.tenant_id):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail="Access denied"
         )
 
     resource = TaskTemplateResource(
@@ -737,23 +741,24 @@ def add_resource_to_task_group(
     resource_data: TaskResourceCreate,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_administrator),
+    tenant_id: int = Depends(get_current_tenant_id),
 ):
     """Add a resource to a task group template"""
     # Check demo resource limit
     from app.utils.demo_limits import check_demo_resource_limit
 
-    check_demo_resource_limit(db, current_user.tenant_id, current_user.tenant)
+    check_demo_resource_limit(db, tenant_id, current_user.tenant)
 
-    task_group = db.query(TaskGroup).filter(TaskGroup.id == group_id).first()
+    # Fetch with tenant filter to prevent enumeration
+    task_group = (
+        db.query(TaskGroup)
+        .filter(TaskGroup.id == group_id, TaskGroup.tenant_id == tenant_id)
+        .first()
+    )
     if not task_group:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Task group not found",
-        )
-
-    if not check_tenant_access(current_user, task_group.tenant_id):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail="Access denied"
         )
 
     resource = TaskGroupResource(

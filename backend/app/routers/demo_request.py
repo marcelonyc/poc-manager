@@ -1,4 +1,5 @@
 """Demo request endpoints"""
+
 from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks
 from sqlalchemy.orm import Session
 from datetime import datetime, timedelta, timezone
@@ -6,10 +7,17 @@ import secrets
 import re
 
 from app.database import get_db
-from app.models.demo_request import DemoRequest, EmailVerificationToken, DemoConversionRequest
+from app.models.demo_request import (
+    DemoRequest,
+    EmailVerificationToken,
+    DemoConversionRequest,
+)
 from app.models.tenant import Tenant
 from app.models.user import User, UserRole
-from app.models.tenant_invitation import TenantInvitation, TenantInvitationStatus
+from app.models.tenant_invitation import (
+    TenantInvitation,
+    TenantInvitationStatus,
+)
 from app.models.user_tenant_role import UserTenantRole
 from app.schemas.demo_request import (
     DemoRequestCreate,
@@ -31,7 +39,7 @@ from app.services.email import (
     send_demo_conversion_request_email,
     send_tenant_invitation_email,
 )
-from app.auth import get_password_hash, get_current_user
+from app.auth import get_password_hash, get_current_user, get_current_tenant_id
 from app.config import settings
 from app.utils.demo_limits import get_demo_limits_info
 from app.services.demo_seed import seed_demo_account
@@ -42,26 +50,30 @@ router = APIRouter(prefix="/demo", tags=["demo"])
 def generate_tenant_slug(company_name: str) -> str:
     """Generate a unique tenant slug from company name"""
     # Remove special characters and convert to lowercase
-    slug = re.sub(r'[^a-z0-9]+', '-', company_name.lower()).strip('-')
+    slug = re.sub(r"[^a-z0-9]+", "-", company_name.lower()).strip("-")
     # Add random suffix to ensure uniqueness
     slug = f"{slug}-demo-{secrets.token_hex(4)}"
     return slug
 
 
-@router.post("/request", response_model=DemoRequestResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/request",
+    response_model=DemoRequestResponse,
+    status_code=status.HTTP_201_CREATED,
+)
 async def request_demo_account(
     data: DemoRequestCreate,
     background_tasks: BackgroundTasks,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     """
     Request a demo account.
-    
+
     If the email belongs to an existing user, we:
     1. Create the demo tenant immediately
     2. Send them an invitation to join the demo tenant
     3. They can accept by logging in with their existing credentials
-    
+
     If it's a new user, follow the normal flow:
     1. Create demo request
     2. Send email verification
@@ -69,10 +81,10 @@ async def request_demo_account(
     """
     # Check if email already exists in users
     existing_user = db.query(User).filter(User.email == data.email).first()
-    
+
     if existing_user:
         # Existing user requesting demo - create tenant and send invitation
-        
+
         # Create demo tenant immediately
         tenant_slug = generate_tenant_slug(data.company_name)
         demo_tenant = Tenant(
@@ -87,11 +99,11 @@ async def request_demo_account(
         db.add(demo_tenant)
         db.commit()
         db.refresh(demo_tenant)
-        
+
         # Create tenant invitation for existing user
         token = secrets.token_urlsafe(32)
         expires_at = datetime.now(timezone.utc) + timedelta(days=7)
-        
+
         tenant_invitation = TenantInvitation(
             email=data.email,
             tenant_id=demo_tenant.id,
@@ -104,7 +116,7 @@ async def request_demo_account(
         )
         db.add(tenant_invitation)
         db.commit()
-        
+
         # Send invitation email
         background_tasks.add_task(
             send_tenant_invitation_email,
@@ -114,7 +126,7 @@ async def request_demo_account(
             token=token,
             invited_by="POC Manager Demo System",
         )
-        
+
         # Create a demo request record for tracking
         demo_request = DemoRequest(
             name=data.name,
@@ -131,16 +143,19 @@ async def request_demo_account(
         db.add(demo_request)
         db.commit()
         db.refresh(demo_request)
-        
+
         return demo_request
-    
+
     # New user - follow normal demo request flow
     # Check if email already exists in pending demo requests
-    existing_request = db.query(DemoRequest).filter(
-        DemoRequest.email == data.email,
-        DemoRequest.is_completed == False
-    ).first()
-    
+    existing_request = (
+        db.query(DemoRequest)
+        .filter(
+            DemoRequest.email == data.email, DemoRequest.is_completed == False
+        )
+        .first()
+    )
+
     if existing_request:
         # Resend verification email for the existing request
         token = secrets.token_urlsafe(32)
@@ -151,16 +166,16 @@ async def request_demo_account(
         )
         db.add(verification_token)
         db.commit()
-        
+
         background_tasks.add_task(
             send_demo_verification_email,
             existing_request.email,
             existing_request.name,
-            token
+            token,
         )
-        
+
         return existing_request
-    
+
     # Create new demo request
     demo_request = DemoRequest(
         name=data.name,
@@ -172,7 +187,7 @@ async def request_demo_account(
     db.add(demo_request)
     db.commit()
     db.refresh(demo_request)
-    
+
     # Create verification token
     token = secrets.token_urlsafe(32)
     verification_token = EmailVerificationToken(
@@ -182,87 +197,92 @@ async def request_demo_account(
     )
     db.add(verification_token)
     db.commit()
-    
+
     # Send verification email in background
     background_tasks.add_task(
         send_demo_verification_email,
         demo_request.email,
         demo_request.name,
-        token
+        token,
     )
-    
+
     return demo_request
 
 
 @router.post("/verify-email")
 async def verify_demo_email(
-    data: VerifyEmailRequest,
-    db: Session = Depends(get_db)
+    data: VerifyEmailRequest, db: Session = Depends(get_db)
 ):
     """Verify email address for demo request"""
     # Find verification token
-    verification_token = db.query(EmailVerificationToken).filter(
-        EmailVerificationToken.token == data.token
-    ).first()
-    
+    verification_token = (
+        db.query(EmailVerificationToken)
+        .filter(EmailVerificationToken.token == data.token)
+        .first()
+    )
+
     if not verification_token:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Invalid verification token"
+            detail="Invalid verification token",
         )
-    
+
     if verification_token.used:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Verification token has already been used"
+            detail="Verification token has already been used",
         )
-    
+
     if datetime.now(timezone.utc) > verification_token.expires_at:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Verification token has expired"
+            detail="Verification token has expired",
         )
-    
+
     # Mark demo request as verified
     demo_request = verification_token.demo_request
     demo_request.is_verified = True
     demo_request.verified_at = datetime.now(timezone.utc)
-    
+
     # Mark token as used
     verification_token.used = True
     verification_token.used_at = datetime.now(timezone.utc)
-    
+
     db.commit()
-    
-    return {"message": "Email verified successfully. Please set your password to complete setup."}
+
+    return {
+        "message": "Email verified successfully. Please set your password to complete setup."
+    }
 
 
 @router.post("/set-password")
 async def set_demo_password(
     data: SetPasswordRequest,
     background_tasks: BackgroundTasks,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     """Set password and complete demo account setup for new users"""
     # Find verification token
-    verification_token = db.query(EmailVerificationToken).filter(
-        EmailVerificationToken.token == data.token
-    ).first()
-    
+    verification_token = (
+        db.query(EmailVerificationToken)
+        .filter(EmailVerificationToken.token == data.token)
+        .first()
+    )
+
     if not verification_token or not verification_token.used:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid or unverified token"
+            detail="Invalid or unverified token",
         )
-    
+
     demo_request = verification_token.demo_request
-    
+
     if demo_request.is_completed:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Demo account setup is already complete"
+            detail="Demo account setup is already complete",
         )
-    
+
     # Create tenant
     tenant_slug = generate_tenant_slug(demo_request.company_name)
     tenant = Tenant(
@@ -276,7 +296,7 @@ async def set_demo_password(
     db.add(tenant)
     db.commit()
     db.refresh(tenant)
-    
+
     # Create user (without role/tenant_id, will use user_tenant_roles)
     user = User(
         email=demo_request.email,
@@ -291,7 +311,7 @@ async def set_demo_password(
     db.add(user)
     db.commit()
     db.refresh(user)
-    
+
     # Create user-tenant-role association (new multi-tenant approach)
     user_tenant_role = UserTenantRole(
         user_id=user.id,
@@ -301,58 +321,57 @@ async def set_demo_password(
     )
     db.add(user_tenant_role)
     db.commit()
-    
+
     # Update demo request
     demo_request.is_completed = True
     demo_request.completed_at = datetime.now(timezone.utc)
     demo_request.tenant_id = tenant.id
     demo_request.user_id = user.id
     db.commit()
-    
+
     # Seed dummy data for the demo account
     seed_result = seed_demo_account(db, tenant.id, user.id)
-    
+
     # Send welcome email in background
     background_tasks.add_task(
         send_demo_welcome_email,
         demo_request.email,
         demo_request.name,
         demo_request.company_name,
-        tenant_slug
+        tenant_slug,
     )
-    
+
     return {
         "message": "Demo account setup complete!",
         "tenant_slug": tenant_slug,
         "user_id": user.id,
-        "seed_result": seed_result
+        "seed_result": seed_result,
     }
 
 
 @router.get("/validate-token/{token}")
 async def validate_verification_token(
-    token: str,
-    db: Session = Depends(get_db)
+    token: str, db: Session = Depends(get_db)
 ):
     """Validate if a verification token is valid and get demo request details"""
-    verification_token = db.query(EmailVerificationToken).filter(
-        EmailVerificationToken.token == token
-    ).first()
-    
+    verification_token = (
+        db.query(EmailVerificationToken)
+        .filter(EmailVerificationToken.token == token)
+        .first()
+    )
+
     if not verification_token:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Invalid token"
+            status_code=status.HTTP_404_NOT_FOUND, detail="Invalid token"
         )
-    
+
     if datetime.now(timezone.utc) > verification_token.expires_at:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Token has expired"
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Token has expired"
         )
-    
+
     demo_request = verification_token.demo_request
-    
+
     return {
         "valid": True,
         "is_verified": demo_request.is_verified,
@@ -363,45 +382,52 @@ async def validate_verification_token(
     }
 
 
-@router.post("/request-conversion", response_model=DemoConversionRequestResponse)
+@router.post(
+    "/request-conversion", response_model=DemoConversionRequestResponse
+)
 async def request_demo_conversion(
     data: DemoConversionRequestCreate,
     background_tasks: BackgroundTasks,
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    tenant_id: int = Depends(get_current_tenant_id),
 ):
     """Request conversion of demo account to real account"""
     # Check if user's tenant is a demo account
     if not current_user.tenant or not current_user.tenant.is_demo:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="This endpoint is only for demo accounts"
+            detail="This endpoint is only for demo accounts",
         )
-    
+
     # Check if there's already a pending request
-    existing_request = db.query(DemoConversionRequest).filter(
-        DemoConversionRequest.tenant_id == current_user.tenant_id,
-        DemoConversionRequest.status == "pending"
-    ).first()
-    
+    existing_request = (
+        db.query(DemoConversionRequest)
+        .filter(
+            DemoConversionRequest.tenant_id == tenant_id,
+            DemoConversionRequest.status == "pending",
+        )
+        .first()
+    )
+
     if existing_request:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="A conversion request is already pending for this account"
+            detail="A conversion request is already pending for this account",
         )
-    
+
     # Create conversion request
     conversion_request = DemoConversionRequest(
-        tenant_id=current_user.tenant_id,
+        tenant_id=tenant_id,
         requested_by_user_id=current_user.id,
         reason=data.reason,
     )
     db.add(conversion_request)
     db.commit()
     db.refresh(conversion_request)
-    
+
     # Get platform admin email
-    platform_admin_email = getattr(settings, 'PLATFORM_ADMIN_EMAIL', None)
+    platform_admin_email = getattr(settings, "PLATFORM_ADMIN_EMAIL", None)
     if platform_admin_email:
         background_tasks.add_task(
             send_demo_conversion_request_email,
@@ -410,9 +436,9 @@ async def request_demo_conversion(
             current_user.full_name,
             current_user.email,
             data.reason or "No reason provided",
-            conversion_request.id
+            conversion_request.id,
         )
-    
+
     return conversion_request
 
 
@@ -421,42 +447,44 @@ async def approve_demo_conversion(
     request_id: int,
     data: ApproveConversionRequest,
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     """Approve or reject demo conversion request (Platform Admin only)"""
     # Check if user is platform admin
     if current_user.role != UserRole.PLATFORM_ADMIN:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only platform administrators can approve conversions"
+            detail="Only platform administrators can approve conversions",
         )
-    
+
     # Find conversion request
-    conversion_request = db.query(DemoConversionRequest).filter(
-        DemoConversionRequest.id == request_id
-    ).first()
-    
+    conversion_request = (
+        db.query(DemoConversionRequest)
+        .filter(DemoConversionRequest.id == request_id)
+        .first()
+    )
+
     if not conversion_request:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Conversion request not found"
+            detail="Conversion request not found",
         )
-    
+
     if conversion_request.status != "pending":
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="This request has already been processed"
+            detail="This request has already been processed",
         )
-    
+
     # Update request
     conversion_request.approved = data.approved
     conversion_request.status = "approved" if data.approved else "rejected"
     conversion_request.approved_by_user_id = current_user.id
     conversion_request.approved_at = datetime.now(timezone.utc)
-    
+
     if not data.approved and data.rejection_reason:
         conversion_request.rejection_reason = data.rejection_reason
-    
+
     # If approved, convert tenant to non-demo
     if data.approved:
         tenant = conversion_request.tenant
@@ -464,85 +492,93 @@ async def approve_demo_conversion(
         # Remove demo limits by setting them to None
         tenant.sales_engineers_count = None
         tenant.pocs_per_quarter = None
-    
+
     db.commit()
-    
+
     return {
         "message": f"Conversion request {'approved' if data.approved else 'rejected'} successfully",
         "request_id": conversion_request.id,
-        "status": conversion_request.status
+        "status": conversion_request.status,
     }
 
 
 @router.get("/conversions", response_model=list[DemoConversionRequestResponse])
 async def list_conversion_requests(
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     """List all demo conversion requests (Platform Admin only)"""
     if current_user.role != UserRole.PLATFORM_ADMIN:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only platform administrators can view conversion requests"
+            detail="Only platform administrators can view conversion requests",
         )
-    
-    requests = db.query(DemoConversionRequest).order_by(
-        DemoConversionRequest.created_at.desc()
-    ).all()
-    
+
+    requests = (
+        db.query(DemoConversionRequest)
+        .order_by(DemoConversionRequest.created_at.desc())
+        .all()
+    )
+
     return requests
 
 
 @router.get("/limits")
 async def get_demo_limits(
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    tenant_id: int = Depends(get_current_tenant_id),
 ):
     """Get demo account limits and current usage"""
-    return get_demo_limits_info(db, current_user.tenant_id, current_user.tenant)
+    return get_demo_limits_info(db, tenant_id, current_user.tenant)
 
 
 # Platform Admin Demo Management Endpoints
 
+
 @router.get("/users", response_model=DemoUserList)
 async def list_demo_users(
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     """List all demo requests (Platform Admin only)"""
     if current_user.role != UserRole.PLATFORM_ADMIN:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only platform administrators can view demo requests"
+            detail="Only platform administrators can view demo requests",
         )
-    
+
     # Query all demo requests
-    demo_requests = db.query(DemoRequest).order_by(DemoRequest.created_at.desc()).all()
-    
+    demo_requests = (
+        db.query(DemoRequest).order_by(DemoRequest.created_at.desc()).all()
+    )
+
     # Build response with tenant names
     requests_response = []
     for demo_req in demo_requests:
         tenant_name = None
         if demo_req.tenant_id and demo_req.tenant:
             tenant_name = demo_req.tenant.name
-        
-        requests_response.append(DemoUserResponse(
-            id=demo_req.id,
-            name=demo_req.name,
-            email=demo_req.email,
-            company_name=demo_req.company_name,
-            sales_engineers_count=demo_req.sales_engineers_count,
-            pocs_per_quarter=demo_req.pocs_per_quarter,
-            is_verified=demo_req.is_verified,
-            is_completed=demo_req.is_completed,
-            tenant_id=demo_req.tenant_id,
-            user_id=demo_req.user_id,
-            tenant_name=tenant_name,
-            created_at=demo_req.created_at,
-            verified_at=demo_req.verified_at,
-            completed_at=demo_req.completed_at
-        ))
-    
+
+        requests_response.append(
+            DemoUserResponse(
+                id=demo_req.id,
+                name=demo_req.name,
+                email=demo_req.email,
+                company_name=demo_req.company_name,
+                sales_engineers_count=demo_req.sales_engineers_count,
+                pocs_per_quarter=demo_req.pocs_per_quarter,
+                is_verified=demo_req.is_verified,
+                is_completed=demo_req.is_completed,
+                tenant_id=demo_req.tenant_id,
+                user_id=demo_req.user_id,
+                tenant_name=tenant_name,
+                created_at=demo_req.created_at,
+                verified_at=demo_req.verified_at,
+                completed_at=demo_req.completed_at,
+            )
+        )
+
     return DemoUserList(total=len(requests_response), users=requests_response)
 
 
@@ -551,24 +587,26 @@ async def block_demo_user(
     user_id: int,
     data: BlockUserRequest,
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     """Block or unblock a demo user (Platform Admin only)"""
     if current_user.role != UserRole.PLATFORM_ADMIN:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only platform administrators can block users"
+            detail="Only platform administrators can block users",
         )
-    
+
     # Find the demo request by ID
-    demo_request = db.query(DemoRequest).filter(DemoRequest.id == user_id).first()
-    
+    demo_request = (
+        db.query(DemoRequest).filter(DemoRequest.id == user_id).first()
+    )
+
     if not demo_request:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Demo request not found"
+            detail="Demo request not found",
         )
-    
+
     # If the demo request has been completed and has a user, block that user
     if demo_request.is_completed and demo_request.user_id:
         user = db.query(User).filter(User.id == demo_request.user_id).first()
@@ -579,13 +617,13 @@ async def block_demo_user(
             return {
                 "message": f"User {action} successfully",
                 "user_id": user_id,
-                "is_blocked": user.is_blocked
+                "is_blocked": user.is_blocked,
             }
-    
+
     # If not completed yet, we can't block (no user exists)
     raise HTTPException(
         status_code=status.HTTP_400_BAD_REQUEST,
-        detail="Cannot block a demo request that hasn't been completed yet"
+        detail="Cannot block a demo request that hasn't been completed yet",
     )
 
 
@@ -594,51 +632,59 @@ async def upgrade_demo_account(
     user_id: int,
     data: UpgradeAccountRequest,
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     """Upgrade a demo account to a real account (Platform Admin only)"""
     if current_user.role != UserRole.PLATFORM_ADMIN:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only platform administrators can upgrade accounts"
+            detail="Only platform administrators can upgrade accounts",
         )
-    
+
     # Find the demo request by ID
-    demo_request = db.query(DemoRequest).filter(DemoRequest.id == user_id).first()
-    
+    demo_request = (
+        db.query(DemoRequest).filter(DemoRequest.id == user_id).first()
+    )
+
     if not demo_request:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Demo request not found"
+            detail="Demo request not found",
         )
-    
+
     if not demo_request.is_completed:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Cannot upgrade a demo request that hasn't been completed yet"
+            detail="Cannot upgrade a demo request that hasn't been completed yet",
         )
-    
+
     # Upgrade the associated user and tenant
     if demo_request.user_id:
         user = db.query(User).filter(User.id == demo_request.user_id).first()
         if user:
             user.is_demo = False
-    
+
     if demo_request.tenant_id:
-        tenant = db.query(Tenant).filter(Tenant.id == demo_request.tenant_id).first()
+        tenant = (
+            db.query(Tenant)
+            .filter(Tenant.id == demo_request.tenant_id)
+            .first()
+        )
         if tenant:
             tenant.is_demo = False
             # Remove demo limits
             tenant.sales_engineers_count = None
             tenant.pocs_per_quarter = None
-            
+
             # Upgrade all users in the tenant
-            tenant_users = db.query(User).filter(User.tenant_id == tenant.id).all()
+            tenant_users = (
+                db.query(User).filter(User.tenant_id == tenant.id).all()
+            )
             for tenant_user in tenant_users:
                 tenant_user.is_demo = False
-    
+
     db.commit()
-    
+
     return {
         "message": "Account upgraded to real account successfully",
         "user_id": user_id,
@@ -652,24 +698,26 @@ async def resend_demo_email(
     data: ResendEmailRequest,
     background_tasks: BackgroundTasks,
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     """Resend verification or welcome email (Platform Admin only)"""
     if current_user.role != UserRole.PLATFORM_ADMIN:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only platform administrators can resend emails"
+            detail="Only platform administrators can resend emails",
         )
-    
+
     # Find the demo request by ID
-    demo_request = db.query(DemoRequest).filter(DemoRequest.id == user_id).first()
-    
+    demo_request = (
+        db.query(DemoRequest).filter(DemoRequest.id == user_id).first()
+    )
+
     if not demo_request:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Demo request not found"
+            detail="Demo request not found",
         )
-    
+
     # If not verified yet, resend verification email
     if not demo_request.is_verified:
         # Create new verification token
@@ -681,20 +729,20 @@ async def resend_demo_email(
         )
         db.add(verification_token)
         db.commit()
-        
+
         background_tasks.add_task(
             send_demo_verification_email,
             demo_request.email,
             demo_request.name,
-            token
+            token,
         )
-        
+
         return {
             "message": "Verification email sent successfully",
             "user_id": user_id,
-            "email": demo_request.email
+            "email": demo_request.email,
         }
-    
+
     # If completed, resend welcome email
     if demo_request.is_completed and demo_request.tenant:
         background_tasks.add_task(
@@ -704,15 +752,14 @@ async def resend_demo_email(
             demo_request.tenant.name,
             demo_request.tenant.slug,
         )
-        
+
         return {
             "message": "Welcome email sent successfully",
             "user_id": user_id,
-            "email": demo_request.email
+            "email": demo_request.email,
         }
-    
+
     raise HTTPException(
         status_code=status.HTTP_400_BAD_REQUEST,
-        detail="Cannot resend email for this demo request state"
+        detail="Cannot resend email for this demo request state",
     )
-
