@@ -64,6 +64,7 @@ interface POCTaskGroup {
     success_criteria_ids: number[]
     sort_order: number
     status?: string
+    tasks?: POCTask[]
 }
 
 interface POCFormProps {
@@ -135,6 +136,7 @@ export default function POCForm({ pocId, initialData, onClose }: POCFormProps) {
     // Tasks and Task Groups
     const [pocTasks, setPocTasks] = useState<POCTask[]>([])
     const [pocTaskGroups, setPocTaskGroups] = useState<POCTaskGroup[]>([])
+    const [expandedGroups, setExpandedGroups] = useState<Set<number>>(new Set())
     const [newTask, setNewTask] = useState<POCTask>({
         title: '',
         description: '',
@@ -473,6 +475,31 @@ export default function POCForm({ pocId, initialData, onClose }: POCFormProps) {
         } catch (error: any) {
             alert(formatErrorMessage(error))
         }
+    }
+
+    const toggleGroupExpansion = async (groupId: number) => {
+        const newExpanded = new Set(expandedGroups)
+
+        if (expandedGroups.has(groupId)) {
+            newExpanded.delete(groupId)
+        } else {
+            newExpanded.add(groupId)
+
+            // Fetch tasks for this group if not already loaded
+            const group = pocTaskGroups.find(g => g.id === groupId)
+            if (group && !group.tasks && pocId) {
+                try {
+                    const response = await api.get(`/tasks/pocs/${pocId}/task-groups/${groupId}/tasks`)
+                    setPocTaskGroups(pocTaskGroups.map(g =>
+                        g.id === groupId ? { ...g, tasks: response.data } : g
+                    ))
+                } catch (error: any) {
+                    toast.error('Failed to fetch group tasks')
+                }
+            }
+        }
+
+        setExpandedGroups(newExpanded)
     }
 
     const handleDeleteTaskGroup = async (groupId: number) => {
@@ -1371,72 +1398,152 @@ export default function POCForm({ pocId, initialData, onClose }: POCFormProps) {
                                     <p className="text-center text-gray-500 py-4">No task groups added yet</p>
                                 ) : (
                                     pocTaskGroups.map((group) => (
-                                        <div key={group.id} className="border border-gray-200 rounded-lg p-3 bg-white">
-                                            <div className="flex justify-between items-start gap-3">
-                                                <div className="flex-1">
-                                                    <div className="flex items-center gap-2">
-                                                        <span className="px-2 py-1 bg-indigo-100 text-indigo-800 rounded text-xs font-medium">
-                                                            GROUP
-                                                        </span>
-                                                        <h4 className="font-medium text-gray-900">{group.title}</h4>
+                                        <div key={group.id} className="border border-gray-200 rounded-lg bg-white">
+                                            <div className="p-3">
+                                                <div className="flex justify-between items-start gap-3">
+                                                    <div className="flex-1 flex items-start gap-2">
+                                                        <button
+                                                            onClick={() => toggleGroupExpansion(group.id!)}
+                                                            className="mt-1 text-gray-500 hover:text-gray-700 focus:outline-none"
+                                                        >
+                                                            <svg
+                                                                className={`w-4 h-4 transition-transform ${expandedGroups.has(group.id!) ? 'rotate-90' : ''}`}
+                                                                fill="none"
+                                                                stroke="currentColor"
+                                                                viewBox="0 0 24 24"
+                                                            >
+                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                                                            </svg>
+                                                        </button>
+                                                        <div className="flex-1">
+                                                            <div className="flex items-center gap-2">
+                                                                <span className="px-2 py-1 bg-indigo-100 text-indigo-800 rounded text-xs font-medium">
+                                                                    GROUP
+                                                                </span>
+                                                                <h4 className="font-medium text-gray-900">{group.title}</h4>
+                                                            </div>
+                                                            {group.description && (
+                                                                <p className="text-sm text-gray-600 mt-1">{group.description}</p>
+                                                            )}
+                                                            {group.success_criteria_ids && group.success_criteria_ids.length > 0 && (
+                                                                <div className="mt-2 flex flex-wrap gap-1">
+                                                                    {group.success_criteria_ids.map(criteriaId => {
+                                                                        const criteria = successCriteria.find(c => c.id === criteriaId)
+                                                                        return criteria ? (
+                                                                            <span key={criteriaId} className="px-2 py-1 bg-purple-100 text-purple-800 rounded text-xs">
+                                                                                {criteria.title}
+                                                                            </span>
+                                                                        ) : null
+                                                                    })}
+                                                                </div>
+                                                            )}
+                                                        </div>
                                                     </div>
-                                                    {group.description && (
-                                                        <p className="text-sm text-gray-600 mt-1">{group.description}</p>
-                                                    )}
-                                                    {group.success_criteria_ids && group.success_criteria_ids.length > 0 && (
-                                                        <div className="mt-2 flex flex-wrap gap-1">
-                                                            {group.success_criteria_ids.map(criteriaId => {
-                                                                const criteria = successCriteria.find(c => c.id === criteriaId)
-                                                                return criteria ? (
-                                                                    <span key={criteriaId} className="px-2 py-1 bg-purple-100 text-purple-800 rounded text-xs">
-                                                                        {criteria.title}
-                                                                    </span>
-                                                                ) : null
-                                                            })}
+                                                    {pocId && (
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="text-xs text-gray-500">Status: {group.status || 'none'}</span>
+                                                            <select
+                                                                value={group.status || 'not_started'}
+                                                                onChange={(e) => handleUpdateTaskGroupStatus(group.id!, e.target.value)}
+                                                                className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm bg-white text-gray-900"
+                                                            >
+                                                                <option value="not_started">Not Started</option>
+                                                                <option value="in_progress">In Progress</option>
+                                                                <option value="completed">Completed</option>
+                                                                <option value="blocked">Blocked</option>
+                                                            </select>
+                                                            <button
+                                                                onClick={() => {
+                                                                    setCommentsModalTaskId(undefined)
+                                                                    setCommentsModalTaskGroupId(group.id)
+                                                                    setShowCommentsModal(true)
+                                                                }}
+                                                                className="px-3 py-1.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 text-sm"
+                                                                title="View Comments"
+                                                            >
+                                                                💬 Comments
+                                                            </button>
+                                                            <button
+                                                                onClick={() => handleDeleteTaskGroup(group.id!)}
+                                                                className="text-red-600 hover:text-red-800"
+                                                            >
+                                                                Delete
+                                                            </button>
                                                         </div>
                                                     )}
-                                                </div>
-                                                {pocId && (
-                                                    <div className="flex items-center gap-2">
-                                                        <span className="text-xs text-gray-500">Status: {group.status || 'none'}</span>
-                                                        <select
-                                                            value={group.status || 'not_started'}
-                                                            onChange={(e) => handleUpdateTaskGroupStatus(group.id!, e.target.value)}
-                                                            className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm bg-white text-gray-900"
-                                                        >
-                                                            <option value="not_started">Not Started</option>
-                                                            <option value="in_progress">In Progress</option>
-                                                            <option value="completed">Completed</option>
-                                                            <option value="blocked">Blocked</option>
-                                                        </select>
-                                                        <button
-                                                            onClick={() => {
-                                                                setCommentsModalTaskId(undefined)
-                                                                setCommentsModalTaskGroupId(group.id)
-                                                                setShowCommentsModal(true)
-                                                            }}
-                                                            className="px-3 py-1.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 text-sm"
-                                                            title="View Comments"
-                                                        >
-                                                            💬 Comments
-                                                        </button>
+                                                    {!pocId && (
                                                         <button
                                                             onClick={() => handleDeleteTaskGroup(group.id!)}
-                                                            className="text-red-600 hover:text-red-800"
+                                                            className="text-red-600 hover:text-red-800 ml-2"
                                                         >
                                                             Delete
                                                         </button>
-                                                    </div>
-                                                )}
-                                                {!pocId && (
-                                                    <button
-                                                        onClick={() => handleDeleteTaskGroup(group.id!)}
-                                                        className="text-red-600 hover:text-red-800 ml-2"
-                                                    >
-                                                        Delete
-                                                    </button>
-                                                )}
+                                                    )}
+                                                </div>
                                             </div>
+
+                                            {/* Expanded Tasks */}
+                                            {expandedGroups.has(group.id!) && group.tasks && (
+                                                <div className="border-t border-gray-200 bg-gray-50">
+                                                    {group.tasks.length === 0 ? (
+                                                        <div className="px-4 py-3 text-sm text-gray-500 italic">
+                                                            No tasks in this group
+                                                        </div>
+                                                    ) : (
+                                                        <div className="space-y-0">
+                                                            {group.tasks.map((task) => (
+                                                                <div key={task.id} className="px-4 py-3 border-b border-gray-200 last:border-b-0 hover:bg-gray-100">
+                                                                    <div className="flex justify-between items-start gap-3 ml-6">
+                                                                        <div className="flex-1">
+                                                                            <h5 className="font-medium text-gray-800 text-sm">{task.title}</h5>
+                                                                            {task.description && (
+                                                                                <p className="text-sm text-gray-600 mt-1">{task.description}</p>
+                                                                            )}
+                                                                            {task.success_criteria_ids && task.success_criteria_ids.length > 0 && (
+                                                                                <div className="mt-2 flex flex-wrap gap-1">
+                                                                                    {task.success_criteria_ids.map(criteriaId => {
+                                                                                        const criteria = successCriteria.find(c => c.id === criteriaId)
+                                                                                        return criteria ? (
+                                                                                            <span key={criteriaId} className="px-2 py-1 bg-purple-100 text-purple-800 rounded text-xs">
+                                                                                                {criteria.title}
+                                                                                            </span>
+                                                                                        ) : null
+                                                                                    })}
+                                                                                </div>
+                                                                            )}
+                                                                        </div>
+                                                                        {pocId && (
+                                                                            <div className="flex items-center gap-2">
+                                                                                <select
+                                                                                    value={task.status || 'not_started'}
+                                                                                    onChange={(e) => handleUpdateTaskStatus(task.id!, e.target.value)}
+                                                                                    className="px-2 py-1 border border-gray-300 rounded text-xs bg-white text-gray-900"
+                                                                                >
+                                                                                    <option value="not_started">Not Started</option>
+                                                                                    <option value="in_progress">In Progress</option>
+                                                                                    <option value="completed">Completed</option>
+                                                                                    <option value="blocked">Blocked</option>
+                                                                                </select>
+                                                                                <button
+                                                                                    onClick={() => {
+                                                                                        setCommentsModalTaskId(task.id)
+                                                                                        setCommentsModalTaskGroupId(undefined)
+                                                                                        setShowCommentsModal(true)
+                                                                                    }}
+                                                                                    className="px-2 py-1 bg-white text-gray-700 rounded hover:bg-gray-200 text-xs"
+                                                                                    title="View Comments"
+                                                                                >
+                                                                                    💬
+                                                                                </button>
+                                                                            </div>
+                                                                        )}
+                                                                    </div>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            )}
                                         </div>
                                     ))
                                 )}
@@ -1600,262 +1707,269 @@ export default function POCForm({ pocId, initialData, onClose }: POCFormProps) {
                             )}
                         </div>
                     </div>
-                )}
+                )
+                }
 
                 {/* Resources Tab */}
-                {activeTab === 'resources' && (
-                    <div className="space-y-6">
-                        <div className="flex justify-between items-center">
-                            <h3 className="font-semibold text-gray-900">POC Resources</h3>
-                            <button
-                                onClick={() => setShowResourceModal(true)}
-                                disabled={!pocId}
-                                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400"
-                            >
-                                Add Resource
-                            </button>
-                        </div>
+                {
+                    activeTab === 'resources' && (
+                        <div className="space-y-6">
+                            <div className="flex justify-between items-center">
+                                <h3 className="font-semibold text-gray-900">POC Resources</h3>
+                                <button
+                                    onClick={() => setShowResourceModal(true)}
+                                    disabled={!pocId}
+                                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400"
+                                >
+                                    Add Resource
+                                </button>
+                            </div>
 
-                        {!pocId && (
-                            <p className="text-sm text-amber-600">
-                                Please save the POC first before adding resources
-                            </p>
-                        )}
-
-                        <div className="space-y-4">
-                            {resources.length === 0 ? (
-                                <p className="text-center text-gray-500 py-8">No resources added yet</p>
-                            ) : (
-                                resources.map((resource) => (
-                                    <div key={resource.id} className="border border-gray-200 rounded-lg p-4">
-                                        <div className="flex justify-between items-start mb-2">
-                                            <div className="flex-1">
-                                                <div className="flex items-center gap-2 mb-1">
-                                                    <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs font-medium">
-                                                        {resource.resource_type}
-                                                    </span>
-                                                    <h4 className="font-medium text-gray-900">{resource.title}</h4>
-                                                </div>
-                                                {resource.description && (
-                                                    <p className="text-sm text-gray-600 mb-2">{resource.description}</p>
-                                                )}
-                                                {resource.resource_type === 'LINK' && (
-                                                    <a
-                                                        href={resource.content}
-                                                        target="_blank"
-                                                        rel="noopener noreferrer"
-                                                        className="text-sm text-blue-600 hover:underline break-all"
-                                                    >
-                                                        {resource.content}
-                                                    </a>
-                                                )}
-                                                {resource.resource_type === 'TEXT' && (
-                                                    <p className="text-sm text-gray-700 whitespace-pre-wrap">{resource.content}</p>
-                                                )}
-                                                {resource.resource_type === 'CODE' && (
-                                                    <pre className="text-sm bg-gray-50 p-2 rounded overflow-x-auto">
-                                                        <code>{resource.content}</code>
-                                                    </pre>
-                                                )}
-                                            </div>
-                                            <button
-                                                onClick={() => handleDeleteResource(resource.id)}
-                                                className="text-red-600 hover:text-red-800 text-sm ml-4"
-                                            >
-                                                Delete
-                                            </button>
-                                        </div>
-                                    </div>
-                                ))
+                            {!pocId && (
+                                <p className="text-sm text-amber-600">
+                                    Please save the POC first before adding resources
+                                </p>
                             )}
-                        </div>
 
-                        {/* Resource Modal */}
-                        {showResourceModal && (
-                            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                                <div className="bg-white rounded-lg p-6 max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
-                                    <h3 className="text-xl font-semibold mb-4">Add Resource</h3>
-
-                                    <div className="space-y-4">
-                                        <div>
-                                            <label className="block text-sm font-medium text-gray-700 mb-1">
-                                                Type *
-                                            </label>
-                                            <select
-                                                value={newResource.resource_type}
-                                                onChange={(e) => setNewResource({ ...newResource, resource_type: e.target.value as any })}
-                                                className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                                            >
-                                                <option value="LINK">Link (URL)</option>
-                                                <option value="TEXT">Text (Notes)</option>
-                                                <option value="CODE">Code (Snippet)</option>
-                                                <option value="FILE">File (Document)</option>
-                                            </select>
+                            <div className="space-y-4">
+                                {resources.length === 0 ? (
+                                    <p className="text-center text-gray-500 py-8">No resources added yet</p>
+                                ) : (
+                                    resources.map((resource) => (
+                                        <div key={resource.id} className="border border-gray-200 rounded-lg p-4">
+                                            <div className="flex justify-between items-start mb-2">
+                                                <div className="flex-1">
+                                                    <div className="flex items-center gap-2 mb-1">
+                                                        <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs font-medium">
+                                                            {resource.resource_type}
+                                                        </span>
+                                                        <h4 className="font-medium text-gray-900">{resource.title}</h4>
+                                                    </div>
+                                                    {resource.description && (
+                                                        <p className="text-sm text-gray-600 mb-2">{resource.description}</p>
+                                                    )}
+                                                    {resource.resource_type === 'LINK' && (
+                                                        <a
+                                                            href={resource.content}
+                                                            target="_blank"
+                                                            rel="noopener noreferrer"
+                                                            className="text-sm text-blue-600 hover:underline break-all"
+                                                        >
+                                                            {resource.content}
+                                                        </a>
+                                                    )}
+                                                    {resource.resource_type === 'TEXT' && (
+                                                        <p className="text-sm text-gray-700 whitespace-pre-wrap">{resource.content}</p>
+                                                    )}
+                                                    {resource.resource_type === 'CODE' && (
+                                                        <pre className="text-sm bg-gray-50 p-2 rounded overflow-x-auto">
+                                                            <code>{resource.content}</code>
+                                                        </pre>
+                                                    )}
+                                                </div>
+                                                <button
+                                                    onClick={() => handleDeleteResource(resource.id)}
+                                                    className="text-red-600 hover:text-red-800 text-sm ml-4"
+                                                >
+                                                    Delete
+                                                </button>
+                                            </div>
                                         </div>
+                                    ))
+                                )}
+                            </div>
 
-                                        <div>
-                                            <label className="block text-sm font-medium text-gray-700 mb-1">
-                                                Title *
-                                            </label>
-                                            <input
-                                                type="text"
-                                                value={newResource.title}
-                                                onChange={(e) => setNewResource({ ...newResource, title: e.target.value })}
-                                                className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                                                placeholder="e.g., Setup Instructions, API Documentation"
-                                            />
-                                        </div>
+                            {/* Resource Modal */}
+                            {showResourceModal && (
+                                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                                    <div className="bg-white rounded-lg p-6 max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+                                        <h3 className="text-xl font-semibold mb-4">Add Resource</h3>
 
-                                        <div>
-                                            <label className="block text-sm font-medium text-gray-700 mb-1">
-                                                Description
-                                            </label>
-                                            <input
-                                                type="text"
-                                                value={newResource.description}
-                                                onChange={(e) => setNewResource({ ...newResource, description: e.target.value })}
-                                                className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                                                placeholder="Optional description"
-                                            />
-                                        </div>
+                                        <div className="space-y-4">
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                                    Type *
+                                                </label>
+                                                <select
+                                                    value={newResource.resource_type}
+                                                    onChange={(e) => setNewResource({ ...newResource, resource_type: e.target.value as any })}
+                                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                                                >
+                                                    <option value="LINK">Link (URL)</option>
+                                                    <option value="TEXT">Text (Notes)</option>
+                                                    <option value="CODE">Code (Snippet)</option>
+                                                    <option value="FILE">File (Document)</option>
+                                                </select>
+                                            </div>
 
-                                        <div>
-                                            <label className="block text-sm font-medium text-gray-700 mb-1">
-                                                {newResource.resource_type === 'LINK' ? 'URL *' :
-                                                    newResource.resource_type === 'CODE' ? 'Code Snippet *' :
-                                                        newResource.resource_type === 'FILE' ? 'File Path/URL *' :
-                                                            'Content *'}
-                                            </label>
-                                            {newResource.resource_type === 'CODE' || newResource.resource_type === 'TEXT' ? (
-                                                <textarea
-                                                    value={newResource.content}
-                                                    onChange={(e) => setNewResource({ ...newResource, content: e.target.value })}
-                                                    rows={6}
-                                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg font-mono text-sm"
-                                                    placeholder={newResource.resource_type === 'CODE' ? 'Paste code snippet here...' : 'Enter text content...'}
-                                                />
-                                            ) : (
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                                    Title *
+                                                </label>
                                                 <input
                                                     type="text"
-                                                    value={newResource.content}
-                                                    onChange={(e) => setNewResource({ ...newResource, content: e.target.value })}
+                                                    value={newResource.title}
+                                                    onChange={(e) => setNewResource({ ...newResource, title: e.target.value })}
                                                     className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                                                    placeholder={newResource.resource_type === 'LINK' ? 'https://...' : 'Enter file path or URL'}
+                                                    placeholder="e.g., Setup Instructions, API Documentation"
                                                 />
+                                            </div>
+
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                                    Description
+                                                </label>
+                                                <input
+                                                    type="text"
+                                                    value={newResource.description}
+                                                    onChange={(e) => setNewResource({ ...newResource, description: e.target.value })}
+                                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                                                    placeholder="Optional description"
+                                                />
+                                            </div>
+
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                                    {newResource.resource_type === 'LINK' ? 'URL *' :
+                                                        newResource.resource_type === 'CODE' ? 'Code Snippet *' :
+                                                            newResource.resource_type === 'FILE' ? 'File Path/URL *' :
+                                                                'Content *'}
+                                                </label>
+                                                {newResource.resource_type === 'CODE' || newResource.resource_type === 'TEXT' ? (
+                                                    <textarea
+                                                        value={newResource.content}
+                                                        onChange={(e) => setNewResource({ ...newResource, content: e.target.value })}
+                                                        rows={6}
+                                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg font-mono text-sm"
+                                                        placeholder={newResource.resource_type === 'CODE' ? 'Paste code snippet here...' : 'Enter text content...'}
+                                                    />
+                                                ) : (
+                                                    <input
+                                                        type="text"
+                                                        value={newResource.content}
+                                                        onChange={(e) => setNewResource({ ...newResource, content: e.target.value })}
+                                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                                                        placeholder={newResource.resource_type === 'LINK' ? 'https://...' : 'Enter file path or URL'}
+                                                    />
+                                                )}
+                                            </div>
+
+                                            {successCriteria.length > 0 && (
+                                                <div>
+                                                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                                                        Link to Success Criteria (Optional)
+                                                    </label>
+                                                    <select
+                                                        value={newResource.success_criteria_id || ''}
+                                                        onChange={(e) => setNewResource({ ...newResource, success_criteria_id: e.target.value ? parseInt(e.target.value) : null })}
+                                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                                                    >
+                                                        <option value="">None</option>
+                                                        {successCriteria.map((sc) => (
+                                                            <option key={sc.id} value={sc.id}>
+                                                                {sc.title}
+                                                            </option>
+                                                        ))}
+                                                    </select>
+                                                </div>
                                             )}
                                         </div>
 
-                                        {successCriteria.length > 0 && (
-                                            <div>
-                                                <label className="block text-sm font-medium text-gray-700 mb-1">
-                                                    Link to Success Criteria (Optional)
-                                                </label>
-                                                <select
-                                                    value={newResource.success_criteria_id || ''}
-                                                    onChange={(e) => setNewResource({ ...newResource, success_criteria_id: e.target.value ? parseInt(e.target.value) : null })}
-                                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                                                >
-                                                    <option value="">None</option>
-                                                    {successCriteria.map((sc) => (
-                                                        <option key={sc.id} value={sc.id}>
-                                                            {sc.title}
-                                                        </option>
-                                                    ))}
-                                                </select>
-                                            </div>
-                                        )}
-                                    </div>
-
-                                    <div className="flex gap-2 mt-6">
-                                        <button
-                                            onClick={handleAddResource}
-                                            className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-                                        >
-                                            Add Resource
-                                        </button>
-                                        <button
-                                            onClick={() => {
-                                                setShowResourceModal(false)
-                                                setNewResource({
-                                                    title: '',
-                                                    description: '',
-                                                    resource_type: 'LINK',
-                                                    content: '',
-                                                    success_criteria_id: null,
-                                                    sort_order: 0
-                                                })
-                                            }}
-                                            className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
-                                        >
-                                            Cancel
-                                        </button>
+                                        <div className="flex gap-2 mt-6">
+                                            <button
+                                                onClick={handleAddResource}
+                                                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                                            >
+                                                Add Resource
+                                            </button>
+                                            <button
+                                                onClick={() => {
+                                                    setShowResourceModal(false)
+                                                    setNewResource({
+                                                        title: '',
+                                                        description: '',
+                                                        resource_type: 'LINK',
+                                                        content: '',
+                                                        success_criteria_id: null,
+                                                        sort_order: 0
+                                                    })
+                                                }}
+                                                className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+                                            >
+                                                Cancel
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
-                        )}
-                    </div>
-                )}
-            </div>
+                            )}
+                        </div>
+                    )
+                }
+            </div >
 
             {/* Comments Modal */}
-            {showCommentsModal && pocId && (
-                <CommentsModal
-                    pocId={pocId}
-                    taskId={commentsModalTaskId}
-                    taskGroupId={commentsModalTaskGroupId}
-                    onClose={() => {
-                        setShowCommentsModal(false)
-                        setCommentsModalTaskId(undefined)
-                        setCommentsModalTaskGroupId(undefined)
-                    }}
-                />
-            )}
+            {
+                showCommentsModal && pocId && (
+                    <CommentsModal
+                        pocId={pocId}
+                        taskId={commentsModalTaskId}
+                        taskGroupId={commentsModalTaskGroupId}
+                        onClose={() => {
+                            setShowCommentsModal(false)
+                            setCommentsModalTaskId(undefined)
+                            setCommentsModalTaskGroupId(undefined)
+                        }}
+                    />
+                )
+            }
 
             {/* Document Generation Modal */}
-            {showDocumentModal && (
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                    <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
-                        <h3 className="text-xl font-semibold mb-4">Generate POC Document</h3>
+            {
+                showDocumentModal && (
+                    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                        <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+                            <h3 className="text-xl font-semibold mb-4">Generate POC Document</h3>
 
-                        <p className="text-gray-600 mb-6">
-                            Choose the format for your POC document. The document will include all POC details,
-                            success criteria, tasks, and resources.
-                        </p>
+                            <p className="text-gray-600 mb-6">
+                                Choose the format for your POC document. The document will include all POC details,
+                                success criteria, tasks, and resources.
+                            </p>
 
-                        <div className="space-y-3 mb-6">
+                            <div className="space-y-3 mb-6">
+                                <button
+                                    onClick={() => handleGenerateDocument('pdf')}
+                                    disabled={generatingDocument}
+                                    className="w-full px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 flex items-center justify-center gap-2"
+                                >
+                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                                    </svg>
+                                    {generatingDocument ? 'Generating...' : 'Download as PDF'}
+                                </button>
+
+                                <button
+                                    onClick={() => handleGenerateDocument('markdown')}
+                                    disabled={generatingDocument}
+                                    className="w-full px-4 py-3 bg-gray-600 text-white rounded-lg hover:bg-gray-700 disabled:bg-gray-400 flex items-center justify-center gap-2"
+                                >
+                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                    </svg>
+                                    {generatingDocument ? 'Generating...' : 'Download as Markdown'}
+                                </button>
+                            </div>
+
                             <button
-                                onClick={() => handleGenerateDocument('pdf')}
+                                onClick={() => setShowDocumentModal(false)}
                                 disabled={generatingDocument}
-                                className="w-full px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 flex items-center justify-center gap-2"
+                                className="w-full px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 disabled:bg-gray-100"
                             >
-                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
-                                </svg>
-                                {generatingDocument ? 'Generating...' : 'Download as PDF'}
-                            </button>
-
-                            <button
-                                onClick={() => handleGenerateDocument('markdown')}
-                                disabled={generatingDocument}
-                                className="w-full px-4 py-3 bg-gray-600 text-white rounded-lg hover:bg-gray-700 disabled:bg-gray-400 flex items-center justify-center gap-2"
-                            >
-                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                </svg>
-                                {generatingDocument ? 'Generating...' : 'Download as Markdown'}
+                                Cancel
                             </button>
                         </div>
-
-                        <button
-                            onClick={() => setShowDocumentModal(false)}
-                            disabled={generatingDocument}
-                            className="w-full px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 disabled:bg-gray-100"
-                        >
-                            Cancel
-                        </button>
                     </div>
-                </div>
-            )}
-        </div>
+                )
+            }
+        </div >
     )
 }

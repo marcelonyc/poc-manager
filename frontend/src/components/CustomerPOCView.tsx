@@ -15,6 +15,7 @@ interface POCTaskGroup {
     title: string
     description: string | null
     status?: string
+    tasks?: POCTask[]
 }
 
 interface CustomerPOCViewProps {
@@ -26,6 +27,7 @@ export default function CustomerPOCView({ pocId }: CustomerPOCViewProps) {
     const [formData, setFormData] = useState<any>({})
     const [pocTasks, setPocTasks] = useState<POCTask[]>([])
     const [pocTaskGroups, setPocTaskGroups] = useState<POCTaskGroup[]>([])
+    const [expandedGroups, setExpandedGroups] = useState<Set<number>>(new Set())
     const [resources, setResources] = useState<any[]>([])
     const [successCriteria, setSuccessCriteria] = useState<any[]>([])
     const [activeTab, setActiveTab] = useState<'dashboard' | 'basic' | 'tasks' | 'resources'>('dashboard')
@@ -79,6 +81,31 @@ export default function CustomerPOCView({ pocId }: CustomerPOCViewProps) {
             case 'blocked': return 'bg-red-100 text-red-800'
             default: return 'bg-gray-100 text-gray-800'
         }
+    }
+
+    const toggleGroupExpansion = async (groupId: number) => {
+        const newExpanded = new Set(expandedGroups)
+
+        if (expandedGroups.has(groupId)) {
+            newExpanded.delete(groupId)
+        } else {
+            newExpanded.add(groupId)
+
+            // Fetch tasks for this group if not already loaded
+            const group = pocTaskGroups.find(g => g.id === groupId)
+            if (group && !group.tasks) {
+                try {
+                    const response = await api.get(`/tasks/pocs/${pocId}/task-groups/${groupId}/tasks`)
+                    setPocTaskGroups(pocTaskGroups.map(g =>
+                        g.id === groupId ? { ...g, tasks: response.data } : g
+                    ))
+                } catch (error: any) {
+                    toast.error('Failed to fetch group tasks')
+                }
+            }
+        }
+
+        setExpandedGroups(newExpanded)
     }
 
     const handleGenerateDocument = async (format: 'pdf' | 'markdown') => {
@@ -348,35 +375,93 @@ export default function CustomerPOCView({ pocId }: CustomerPOCViewProps) {
                                     <p className="text-center text-gray-500 py-4">No task groups added yet</p>
                                 ) : (
                                     pocTaskGroups.map((group) => (
-                                        <div key={group.id} className="border border-gray-200 rounded-lg p-4 bg-white">
-                                            <div className="flex justify-between items-start gap-3">
-                                                <div className="flex-1">
-                                                    <div className="flex items-center gap-2 mb-1">
-                                                        <span className="px-2 py-1 bg-indigo-100 text-indigo-800 rounded text-xs font-medium">
-                                                            GROUP
-                                                        </span>
-                                                        <h4 className="font-medium text-gray-900">{group.title}</h4>
+                                        <div key={group.id} className="border border-gray-200 rounded-lg bg-white">
+                                            <div className="p-4">
+                                                <div className="flex justify-between items-start gap-3">
+                                                    <div className="flex-1 flex items-start gap-2">
+                                                        <button
+                                                            onClick={() => toggleGroupExpansion(group.id!)}
+                                                            className="mt-1 text-gray-500 hover:text-gray-700 focus:outline-none"
+                                                        >
+                                                            <svg
+                                                                className={`w-4 h-4 transition-transform ${expandedGroups.has(group.id!) ? 'rotate-90' : ''}`}
+                                                                fill="none"
+                                                                stroke="currentColor"
+                                                                viewBox="0 0 24 24"
+                                                            >
+                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                                                            </svg>
+                                                        </button>
+                                                        <div className="flex-1">
+                                                            <div className="flex items-center gap-2 mb-1">
+                                                                <span className="px-2 py-1 bg-indigo-100 text-indigo-800 rounded text-xs font-medium">
+                                                                    GROUP
+                                                                </span>
+                                                                <h4 className="font-medium text-gray-900">{group.title}</h4>
+                                                            </div>
+                                                            {group.description && (
+                                                                <p className="text-sm text-gray-600 mt-1">{group.description}</p>
+                                                            )}
+                                                        </div>
                                                     </div>
-                                                    {group.description && (
-                                                        <p className="text-sm text-gray-600 mt-1">{group.description}</p>
-                                                    )}
-                                                </div>
-                                                <div className="flex items-center gap-2">
-                                                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(group.status)}`}>
-                                                        {getStatusLabel(group.status)}
-                                                    </span>
-                                                    <button
-                                                        onClick={() => {
-                                                            setCommentsModalTaskId(undefined)
-                                                            setCommentsModalTaskGroupId(group.id)
-                                                            setShowCommentsModal(true)
-                                                        }}
-                                                        className="px-3 py-1.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 text-sm"
-                                                    >
-                                                        💬 Comments
-                                                    </button>
+                                                    <div className="flex items-center gap-2">
+                                                        <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(group.status)}`}>
+                                                            {getStatusLabel(group.status)}
+                                                        </span>
+                                                        <button
+                                                            onClick={() => {
+                                                                setCommentsModalTaskId(undefined)
+                                                                setCommentsModalTaskGroupId(group.id)
+                                                                setShowCommentsModal(true)
+                                                            }}
+                                                            className="px-3 py-1.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 text-sm"
+                                                        >
+                                                            💬 Comments
+                                                        </button>
+                                                    </div>
                                                 </div>
                                             </div>
+
+                                            {/* Expanded Tasks */}
+                                            {expandedGroups.has(group.id!) && group.tasks && (
+                                                <div className="border-t border-gray-200 bg-gray-50">
+                                                    {group.tasks.length === 0 ? (
+                                                        <div className="px-4 py-3 text-sm text-gray-500 italic">
+                                                            No tasks in this group
+                                                        </div>
+                                                    ) : (
+                                                        <div className="space-y-0">
+                                                            {group.tasks.map((task) => (
+                                                                <div key={task.id} className="px-4 py-3 border-b border-gray-200 last:border-b-0 hover:bg-gray-100">
+                                                                    <div className="flex justify-between items-start gap-3 ml-6">
+                                                                        <div className="flex-1">
+                                                                            <h5 className="font-medium text-gray-800 text-sm">{task.title}</h5>
+                                                                            {task.description && (
+                                                                                <p className="text-sm text-gray-600 mt-1">{task.description}</p>
+                                                                            )}
+                                                                        </div>
+                                                                        <div className="flex items-center gap-2">
+                                                                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(task.status)}`}>
+                                                                                {getStatusLabel(task.status)}
+                                                                            </span>
+                                                                            <button
+                                                                                onClick={() => {
+                                                                                    setCommentsModalTaskId(task.id)
+                                                                                    setCommentsModalTaskGroupId(undefined)
+                                                                                    setShowCommentsModal(true)
+                                                                                }}
+                                                                                className="px-2 py-1 bg-white text-gray-700 rounded hover:bg-gray-200 text-xs"
+                                                                            >
+                                                                                💬
+                                                                            </button>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            )}
                                         </div>
                                     ))
                                 )}
@@ -400,9 +485,9 @@ export default function CustomerPOCView({ pocId }: CustomerPOCViewProps) {
                                         <div className="flex justify-between items-start mb-2">
                                             <div className="flex items-center gap-2">
                                                 <span className={`px-2 py-1 text-xs font-medium rounded ${resource.resource_type === 'LINK' ? 'bg-blue-100 text-blue-800' :
-                                                        resource.resource_type === 'CODE' ? 'bg-purple-100 text-purple-800' :
-                                                            resource.resource_type === 'TEXT' ? 'bg-green-100 text-green-800' :
-                                                                'bg-orange-100 text-orange-800'
+                                                    resource.resource_type === 'CODE' ? 'bg-purple-100 text-purple-800' :
+                                                        resource.resource_type === 'TEXT' ? 'bg-green-100 text-green-800' :
+                                                            'bg-orange-100 text-orange-800'
                                                     }`}>
                                                     {resource.resource_type}
                                                 </span>
