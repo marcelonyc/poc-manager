@@ -187,8 +187,29 @@ def deactivate_user(
 ):
     """Deactivate a user in the current tenant (Tenant Admin) or platform-wide (Platform Admin only)"""
 
-    # Get the current user's role from JWT token (tenant-specific)
-    current_role = getattr(current_user, "_current_role", current_user.role)
+    # Get the current user's actual role in this tenant from the database
+    # Do NOT use current_user.role as it's deprecated and could be wrong
+    if tenant_id is None:
+        # No tenant context - must be a platform admin
+        current_role = current_user.role
+    else:
+        # Query the database for the user's role in this specific tenant
+        current_user_tenant_role = (
+            db.query(UserTenantRole)
+            .filter(
+                UserTenantRole.user_id == current_user.id,
+                UserTenantRole.tenant_id == tenant_id,
+            )
+            .first()
+        )
+
+        if not current_user_tenant_role:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You do not have access to this tenant",
+            )
+
+        current_role = current_user_tenant_role.role
 
     # Only Platform Admins can deactivate at platform level
     if current_role == UserRole.PLATFORM_ADMIN:
@@ -290,8 +311,29 @@ def reactivate_user(
 ):
     """Reactivate a user in the current tenant (Tenant Admin) or platform-wide (Platform Admin only)"""
 
-    # Get the current user's role from JWT token (tenant-specific)
-    current_role = getattr(current_user, "_current_role", current_user.role)
+    # Get the current user's actual role in this tenant from the database
+    # Do NOT use current_user.role as it's deprecated and could be wrong
+    if tenant_id is None:
+        # No tenant context - must be a platform admin
+        current_role = current_user.role
+    else:
+        # Query the database for the user's role in this specific tenant
+        current_user_tenant_role = (
+            db.query(UserTenantRole)
+            .filter(
+                UserTenantRole.user_id == current_user.id,
+                UserTenantRole.tenant_id == tenant_id,
+            )
+            .first()
+        )
+
+        if not current_user_tenant_role:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You do not have access to this tenant",
+            )
+
+        current_role = current_user_tenant_role.role
 
     # Only Platform Admins can reactivate at platform level
     if current_role == UserRole.PLATFORM_ADMIN:
@@ -345,8 +387,31 @@ def get_user_tenant_roles(
     current_user: User = Depends(get_current_user),
 ):
     """Get all tenant roles for a user (Platform Admin only)"""
-    # Get the current user's role from JWT token (tenant-specific)
-    current_role = getattr(current_user, "_current_role", current_user.role)
+    # Get the current user's actual role from the database
+    # For platform admins, tenant_id will be None
+    current_tenant_id = get_current_tenant_id(current_user)
+
+    if current_tenant_id is None:
+        # No tenant context - use the role from users table (platform admin)
+        current_role = current_user.role
+    else:
+        # Query the database for the user's role in this specific tenant
+        current_user_tenant_role = (
+            db.query(UserTenantRole)
+            .filter(
+                UserTenantRole.user_id == current_user.id,
+                UserTenantRole.tenant_id == current_tenant_id,
+            )
+            .first()
+        )
+
+        if not current_user_tenant_role:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You do not have access to this tenant",
+            )
+
+        current_role = current_user_tenant_role.role
 
     if current_role != UserRole.PLATFORM_ADMIN and current_user.id != user_id:
         raise HTTPException(
@@ -391,8 +456,29 @@ def update_user_tenant_role(
             detail="User-tenant association not found",
         )
 
-    # Get the current user's role from JWT token (tenant-specific)
-    current_role = getattr(current_user, "_current_role", current_user.role)
+    # Get the current user's actual role in this tenant from the database
+    # Do NOT use current_user.role as it's deprecated and could be wrong
+    if session_tenant_id is None:
+        # No tenant context - must be a platform admin
+        current_role = current_user.role
+    else:
+        # Query the database for the user's role in this specific tenant
+        current_user_tenant_role = (
+            db.query(UserTenantRole)
+            .filter(
+                UserTenantRole.user_id == current_user.id,
+                UserTenantRole.tenant_id == session_tenant_id,
+            )
+            .first()
+        )
+
+        if not current_user_tenant_role:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You do not have access to this tenant",
+            )
+
+        current_role = current_user_tenant_role.role
 
     # Check permissions
     if current_role == UserRole.PLATFORM_ADMIN:
