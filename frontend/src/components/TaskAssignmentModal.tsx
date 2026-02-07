@@ -82,9 +82,11 @@ export default function TaskAssignmentModal({
         }
     }
 
-    // Filter active participants (joined or invited)
+    // Filter active participants (accepted or pending/invited)
+    // Accepted participants have joined the POC
+    // Pending/invited participants have invitations that haven't been accepted yet
     const activeParticipants = participants.filter(p =>
-        p.status === 'joined' || p.status === 'invited'
+        p.status === 'accepted' || p.status === 'pending' || p.status === 'invited'
     )
 
     return (
@@ -119,8 +121,8 @@ export default function TaskAssignmentModal({
                                         key={participantId}
                                         onClick={() => toggleParticipant(participantId)}
                                         className={`border rounded-lg p-4 cursor-pointer transition-all ${isSelected
-                                                ? 'border-indigo-500 bg-indigo-50'
-                                                : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                                            ? 'border-indigo-500 bg-indigo-50'
+                                            : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
                                             }`}
                                     >
                                         <div className="flex items-start gap-3">
@@ -147,9 +149,14 @@ export default function TaskAssignmentModal({
                                                             Customer
                                                         </span>
                                                     )}
-                                                    {participant.status === 'invited' && (
+                                                    {(participant.status === 'pending' || participant.status === 'invited') && (
                                                         <span className="px-2 py-0.5 bg-yellow-100 text-yellow-800 text-xs rounded">
                                                             Pending
+                                                        </span>
+                                                    )}
+                                                    {participant.status === 'expired' && (
+                                                        <span className="px-2 py-0.5 bg-red-100 text-red-800 text-xs rounded">
+                                                            Expired
                                                         </span>
                                                     )}
                                                 </div>
