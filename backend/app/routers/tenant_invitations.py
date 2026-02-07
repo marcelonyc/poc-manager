@@ -24,6 +24,7 @@ from app.auth import (
     get_current_tenant_id,
 )
 from app.services.email import send_tenant_invitation_email
+from app.services.demo_seed import seed_demo_account
 
 router = APIRouter(prefix="/tenant-invitations", tags=["Tenant Invitations"])
 
@@ -323,7 +324,64 @@ def accept_tenant_invitation(
     invitation.status = TenantInvitationStatus.ACCEPTED
     invitation.accepted_at = datetime.now(timezone.utc)
 
+    # Check if this is a demo tenant and if it's empty (no sample data yet)
+    tenant = invitation.tenant
+    is_demo_tenant = tenant and tenant.is_demo
+
+    # Check if tenant already has sample data (check for demo users or POCs)
+    has_sample_data = False
+    if is_demo_tenant:
+        # Check if there are already demo users or POCs in this tenant
+        from app.models.poc import POC
+
+        existing_pocs = (
+            db.query(POC).filter(POC.tenant_id == tenant.id).count()
+        )
+        existing_demo_users = (
+            db.query(User)
+            .filter(
+                User.tenant_id == tenant.id,
+                User.is_demo == True,
+                User.id != current_user.id,
+            )
+            .count()
+        )
+        has_sample_data = existing_pocs > 0 or existing_demo_users > 0
+
     db.commit()
+
+    # Seed demo data if this is a demo tenant without existing data
+    if (
+        is_demo_tenant
+        and not has_sample_data
+        and invitation.role == UserRole.TENANT_ADMIN
+    ):
+        try:
+            seed_result = seed_demo_account(db, tenant.id, current_user.id)
+            db.commit()
+
+            # Mark associated demo request as completed
+            from app.models.demo_request import DemoRequest
+
+            demo_request = (
+                db.query(DemoRequest)
+                .filter(
+                    DemoRequest.tenant_id == tenant.id,
+                    DemoRequest.email == current_user.email,
+                    DemoRequest.is_completed == False,
+                )
+                .first()
+            )
+
+            if demo_request:
+                demo_request.is_completed = True
+                demo_request.completed_at = datetime.now(timezone.utc)
+                db.commit()
+        except Exception as e:
+            # Log error but don't fail the invitation acceptance
+            print(
+                f"Warning: Failed to seed demo data for tenant {tenant.id}: {e}"
+            )
 
     tenant_name = invitation.tenant.name if invitation.tenant else "Unknown"
 
