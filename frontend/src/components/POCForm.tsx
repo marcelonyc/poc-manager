@@ -460,9 +460,24 @@ export default function POCForm({ pocId, initialData, onClose }: POCFormProps) {
 
         try {
             await api.put(`/tasks/pocs/${pocId}/tasks/${taskId}`, { status: newStatus })
+
+            // Update task in the main pocTasks array
             setPocTasks(pocTasks.map(t => t.id === taskId ? { ...t, status: newStatus } : t))
+
+            // Also update task if it's nested in a task group
+            setPocTaskGroups(pocTaskGroups.map(g => {
+                if (g.tasks) {
+                    return {
+                        ...g,
+                        tasks: g.tasks.map(t => t.id === taskId ? { ...t, status: newStatus } : t)
+                    }
+                }
+                return g
+            }))
+
+            toast.success('Task status updated')
         } catch (error: any) {
-            alert(formatErrorMessage(error))
+            toast.error(formatErrorMessage(error, 'Failed to update task status'))
         }
     }
 
