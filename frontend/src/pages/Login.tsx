@@ -25,6 +25,10 @@ export default function Login() {
         }
     }, [location])
 
+    const handleForgotPassword = () => {
+        navigate('forgot-password')
+    }
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
         setLoading(true)
