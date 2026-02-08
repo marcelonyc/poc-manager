@@ -37,6 +37,7 @@ from app.services.email import (
     send_demo_verification_email,
     send_demo_welcome_email,
     send_demo_conversion_request_email,
+    send_demo_account_started_email,
     send_tenant_invitation_email,
 )
 from app.auth import get_password_hash, get_current_user, get_current_tenant_id
@@ -144,6 +145,27 @@ async def request_demo_account(
         db.commit()
         db.refresh(demo_request)
 
+        platform_admins = (
+            db.query(User)
+            .filter(
+                User.role == UserRole.PLATFORM_ADMIN,
+                User.is_active == True,
+            )
+            .all()
+        )
+
+        for admin in platform_admins:
+            background_tasks.add_task(
+                send_demo_account_started_email,
+                admin.email,
+                data.name,
+                data.email,
+                data.company_name,
+                data.sales_engineers_count,
+                data.pocs_per_quarter,
+                True,
+            )
+
         return demo_request
 
     # New user - follow normal demo request flow
@@ -187,6 +209,27 @@ async def request_demo_account(
     db.add(demo_request)
     db.commit()
     db.refresh(demo_request)
+
+    platform_admins = (
+        db.query(User)
+        .filter(
+            User.role == UserRole.PLATFORM_ADMIN,
+            User.is_active == True,
+        )
+        .all()
+    )
+
+    for admin in platform_admins:
+        background_tasks.add_task(
+            send_demo_account_started_email,
+            admin.email,
+            data.name,
+            data.email,
+            data.company_name,
+            data.sales_engineers_count,
+            data.pocs_per_quarter,
+            False,
+        )
 
     # Create verification token
     token = secrets.token_urlsafe(32)

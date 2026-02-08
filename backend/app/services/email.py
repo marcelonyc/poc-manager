@@ -1,4 +1,5 @@
 """Email service"""
+
 import logging
 from fastapi_mail import FastMail, MessageSchema, ConnectionConfig
 from typing import List
@@ -41,18 +42,18 @@ async def send_email(
     subject: str,
     body: str,
     tenant: Tenant = None,
-    html: bool = False
+    html: bool = False,
 ):
     """Send an email"""
     config = get_mail_config(tenant)
-    
+
     message = MessageSchema(
         subject=subject,
         recipients=recipients,
         body=body,
         subtype="html" if html else "plain",
     )
-    
+
     fm = FastMail(config)
     await fm.send_message(message)
 
@@ -67,9 +68,12 @@ async def send_invitation_email(
     try:
         # Get frontend URL from environment or use default
         from app.config import settings
-        frontend_url = getattr(settings, 'FRONTEND_URL', 'http://localhost:3001')
+
+        frontend_url = getattr(
+            settings, "FRONTEND_URL", "http://localhost:3001"
+        )
         invitation_url = f"{frontend_url}/accept-invitation?token={token}"
-        
+
         subject = "Invitation to Join as Platform Admin"
         body = f"""
         <html>
@@ -100,12 +104,17 @@ async def send_invitation_email(
             </body>
         </html>
         """
-        
+
         await send_email([recipient], subject, body, tenant=None, html=True)
-        logger.info(f"Successfully sent platform admin invitation email to {recipient}")
+        logger.info(
+            f"Successfully sent platform admin invitation email to {recipient}"
+        )
     except Exception as e:
         # Log error but don't crash the background task
-        logger.error(f"Failed to send invitation email to {recipient}: {str(e)}", exc_info=True)
+        logger.error(
+            f"Failed to send invitation email to {recipient}: {str(e)}",
+            exc_info=True,
+        )
 
 
 async def send_user_invitation_email(
@@ -113,7 +122,7 @@ async def send_user_invitation_email(
     full_name: str,
     role: str,
     temp_password: str,
-    tenant: Tenant = None
+    tenant: Tenant = None,
 ):
     """Send user invitation email (for non-Platform Admin users)"""
     subject = "Invitation to POC Manager"
@@ -131,7 +140,7 @@ async def send_user_invitation_email(
     Best regards,
     POC Manager Team
     """
-    
+
     await send_email([email], subject, body, tenant)
 
 
@@ -139,7 +148,7 @@ async def send_poc_update_notification(
     recipients: List[str],
     poc_title: str,
     update_type: str,
-    tenant: Tenant = None
+    tenant: Tenant = None,
 ):
     """Send POC update notification"""
     subject = f"POC Update: {poc_title}"
@@ -151,7 +160,7 @@ async def send_poc_update_notification(
     Best regards,
     POC Manager Team
     """
-    
+
     await send_email(recipients, subject, body, tenant)
 
 
@@ -162,16 +171,19 @@ async def send_poc_invitation_email(
     token: str,
     invited_by_name: str,
     personal_message: str = None,
-    tenant: Tenant = None
+    tenant: Tenant = None,
 ):
     """Send POC invitation email"""
     try:
         from app.config import settings
-        frontend_url = getattr(settings, 'FRONTEND_URL', 'http://localhost:3001')
+
+        frontend_url = getattr(
+            settings, "FRONTEND_URL", "http://localhost:3001"
+        )
         invitation_url = f"{frontend_url}/poc-invitation?token={token}"
-        
+
         subject = f"Invitation to Join POC: {poc_title}"
-        
+
         personal_msg_html = ""
         if personal_message:
             personal_msg_html = f"""
@@ -179,7 +191,7 @@ async def send_poc_invitation_email(
                 <p style="margin: 0; font-style: italic; color: #374151;">"{personal_message}"</p>
             </div>
             """
-        
+
         body = f"""
         <html>
             <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
@@ -219,12 +231,16 @@ async def send_poc_invitation_email(
             </body>
         </html>
         """
-        
+
         await send_email([recipient], subject, body, tenant, html=True)
-        logger.info(f"Successfully sent POC invitation email to {recipient} for POC: {poc_title}")
+        logger.info(
+            f"Successfully sent POC invitation email to {recipient} for POC: {poc_title}"
+        )
         return True
     except Exception as e:
-        error_msg = f"Failed to send POC invitation email to {recipient}: {str(e)}"
+        error_msg = (
+            f"Failed to send POC invitation email to {recipient}: {str(e)}"
+        )
         logger.error(error_msg, exc_info=True)
         return False
 
@@ -237,7 +253,7 @@ async def send_poc_invitation_email_with_tracking(
     token: str,
     invited_by_name: str,
     personal_message: str = None,
-    tenant: Tenant = None
+    tenant: Tenant = None,
 ):
     """
     Send POC invitation email and update the database with delivery status.
@@ -245,7 +261,7 @@ async def send_poc_invitation_email_with_tracking(
     """
     from app.database import SessionLocal
     from app.models.poc_invitation import POCInvitation, POCInvitationStatus
-    
+
     # Send the email
     success = await send_poc_invitation_email(
         recipient=recipient,
@@ -254,46 +270,61 @@ async def send_poc_invitation_email_with_tracking(
         token=token,
         invited_by_name=invited_by_name,
         personal_message=personal_message,
-        tenant=tenant
+        tenant=tenant,
     )
-    
+
     # Update the invitation record
     db = SessionLocal()
     try:
-        invitation = db.query(POCInvitation).filter(POCInvitation.id == invitation_id).first()
+        invitation = (
+            db.query(POCInvitation)
+            .filter(POCInvitation.id == invitation_id)
+            .first()
+        )
         if invitation:
             invitation.email_sent = success
             if success:
                 invitation.email_error = None
-                logger.info(f"Updated invitation {invitation_id} - email sent successfully")
+                logger.info(
+                    f"Updated invitation {invitation_id} - email sent successfully"
+                )
             else:
-                invitation.email_error = "Failed to send email - check logs for details"
+                invitation.email_error = (
+                    "Failed to send email - check logs for details"
+                )
                 invitation.status = POCInvitationStatus.FAILED
-                logger.error(f"Updated invitation {invitation_id} - marked as FAILED")
+                logger.error(
+                    f"Updated invitation {invitation_id} - marked as FAILED"
+                )
             db.commit()
         else:
-            logger.warning(f"Could not find invitation {invitation_id} to update email status")
+            logger.warning(
+                f"Could not find invitation {invitation_id} to update email status"
+            )
     except Exception as e:
-        logger.error(f"Failed to update invitation {invitation_id} email status: {str(e)}", exc_info=True)
+        logger.error(
+            f"Failed to update invitation {invitation_id} email status: {str(e)}",
+            exc_info=True,
+        )
         db.rollback()
     finally:
         db.close()
 
 
 async def send_password_reset_email(
-    recipient: str,
-    full_name: str,
-    token: str,
-    tenant: Tenant = None
+    recipient: str, full_name: str, token: str, tenant: Tenant = None
 ):
     """Send password reset email"""
     try:
         from app.config import settings
-        frontend_url = getattr(settings, 'FRONTEND_URL', 'http://localhost:3001')
+
+        frontend_url = getattr(
+            settings, "FRONTEND_URL", "http://localhost:3001"
+        )
         reset_url = f"{frontend_url}/reset-password?token={token}"
-        
+
         subject = "Password Reset Request"
-        
+
         body = f"""
         <html>
             <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
@@ -326,12 +357,14 @@ async def send_password_reset_email(
             </body>
         </html>
         """
-        
+
         await send_email([recipient], subject, body, tenant, html=True)
         logger.info(f"Successfully sent password reset email to {recipient}")
         return True
     except Exception as e:
-        error_msg = f"Failed to send password reset email to {recipient}: {str(e)}"
+        error_msg = (
+            f"Failed to send password reset email to {recipient}: {str(e)}"
+        )
         logger.error(error_msg, exc_info=True)
         return False
 
@@ -344,9 +377,12 @@ async def send_demo_verification_email(
     """Send email verification for demo account request"""
     try:
         from app.config import settings
-        frontend_url = getattr(settings, 'FRONTEND_URL', 'http://localhost:3001')
+
+        frontend_url = getattr(
+            settings, "FRONTEND_URL", "http://localhost:3001"
+        )
         verification_url = f"{frontend_url}/verify-demo-email?token={token}"
-        
+
         subject = "Verify Your Demo Account Request"
         body = f"""
         <html>
@@ -376,12 +412,65 @@ async def send_demo_verification_email(
             </body>
         </html>
         """
-        
+
         await send_email([recipient], subject, body, None, html=True)
-        logger.info(f"Successfully sent demo verification email to {recipient}")
+        logger.info(
+            f"Successfully sent demo verification email to {recipient}"
+        )
         return True
     except Exception as e:
-        error_msg = f"Failed to send demo verification email to {recipient}: {str(e)}"
+        error_msg = (
+            f"Failed to send demo verification email to {recipient}: {str(e)}"
+        )
+        logger.error(error_msg, exc_info=True)
+        return False
+
+
+async def send_demo_account_started_email(
+    admin_email: str,
+    name: str,
+    email: str,
+    company_name: str,
+    sales_engineers_count: int,
+    pocs_per_quarter: int,
+    existing_user: bool,
+):
+    """Send demo account start notification to platform admin"""
+    try:
+        subject = f"New Demo Account Registration: {company_name}"
+        existing_user_label = "Yes" if existing_user else "No"
+        body = f"""
+        <html>
+            <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+                <h2 style="color: #4F46E5;">New Demo Account Started</h2>
+                <p>A new demo account registration has been submitted with the following details:</p>
+
+                <div style="background-color: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                    <p style="margin: 5px 0;"><strong>Name:</strong> {name}</p>
+                    <p style="margin: 5px 0;"><strong>Email:</strong> {email}</p>
+                    <p style="margin: 5px 0;"><strong>Company:</strong> {company_name}</p>
+                    <p style="margin: 5px 0;"><strong>Sales Engineers:</strong> {sales_engineers_count}</p>
+                    <p style="margin: 5px 0;"><strong>POCs per Quarter:</strong> {pocs_per_quarter}</p>
+                    <p style="margin: 5px 0;"><strong>Existing User:</strong> {existing_user_label}</p>
+                </div>
+
+                <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
+                <p style="color: #666; font-size: 14px;">
+                    POC Manager Platform Administration
+                </p>
+            </body>
+        </html>
+        """
+
+        await send_email([admin_email], subject, body, None, html=True)
+        logger.info(
+            "Successfully sent demo account started email to %s for %s",
+            admin_email,
+            company_name,
+        )
+        return True
+    except Exception as e:
+        error_msg = f"Failed to send demo account started email: {str(e)}"
         logger.error(error_msg, exc_info=True)
         return False
 
@@ -395,9 +484,12 @@ async def send_demo_welcome_email(
     """Send welcome email after demo account setup"""
     try:
         from app.config import settings
-        frontend_url = getattr(settings, 'FRONTEND_URL', 'http://localhost:3001')
+
+        frontend_url = getattr(
+            settings, "FRONTEND_URL", "http://localhost:3001"
+        )
         login_url = f"{frontend_url}/login"
-        
+
         subject = "Welcome to Your POC Manager Demo Account!"
         body = f"""
         <html>
@@ -449,12 +541,14 @@ async def send_demo_welcome_email(
             </body>
         </html>
         """
-        
+
         await send_email([recipient], subject, body, None, html=True)
         logger.info(f"Successfully sent demo welcome email to {recipient}")
         return True
     except Exception as e:
-        error_msg = f"Failed to send demo welcome email to {recipient}: {str(e)}"
+        error_msg = (
+            f"Failed to send demo welcome email to {recipient}: {str(e)}"
+        )
         logger.error(error_msg, exc_info=True)
         return False
 
@@ -470,9 +564,12 @@ async def send_demo_conversion_request_email(
     """Send demo conversion request to platform admin"""
     try:
         from app.config import settings
-        frontend_url = getattr(settings, 'FRONTEND_URL', 'http://localhost:3001')
+
+        frontend_url = getattr(
+            settings, "FRONTEND_URL", "http://localhost:3001"
+        )
         approval_url = f"{frontend_url}/admin/demo-conversions/{request_id}"
-        
+
         subject = f"Demo Conversion Request: {tenant_name}"
         body = f"""
         <html>
@@ -505,9 +602,11 @@ async def send_demo_conversion_request_email(
             </body>
         </html>
         """
-        
+
         await send_email([admin_email], subject, body, None, html=True)
-        logger.info(f"Successfully sent demo conversion request email to {admin_email} for tenant {tenant_name}")
+        logger.info(
+            f"Successfully sent demo conversion request email to {admin_email} for tenant {tenant_name}"
+        )
         return True
     except Exception as e:
         error_msg = f"Failed to send demo conversion request email: {str(e)}"
@@ -522,10 +621,13 @@ async def send_existing_account_notification_email(
     """Send notification to existing account holder that someone tried to create a demo with their email"""
     try:
         from app.config import settings
-        frontend_url = getattr(settings, 'FRONTEND_URL', 'http://localhost:3001')
+
+        frontend_url = getattr(
+            settings, "FRONTEND_URL", "http://localhost:3001"
+        )
         login_url = f"{frontend_url}/login"
         reset_password_url = f"{frontend_url}/forgot-password"
-        
+
         subject = "Demo Account Request Notification"
         body = f"""
         <html>
@@ -574,12 +676,16 @@ async def send_existing_account_notification_email(
             </body>
         </html>
         """
-        
+
         await send_email([recipient], subject, body, None, html=True)
-        logger.info(f"Successfully sent existing account notification email to {recipient}")
+        logger.info(
+            f"Successfully sent existing account notification email to {recipient}"
+        )
         return True
     except Exception as e:
-        error_msg = f"Failed to send existing account notification email: {str(e)}"
+        error_msg = (
+            f"Failed to send existing account notification email: {str(e)}"
+        )
         logger.error(error_msg, exc_info=True)
         return False
 
@@ -594,9 +700,12 @@ async def send_tenant_invitation_email(
     """Send tenant invitation email to existing user"""
     try:
         from app.config import settings
-        frontend_url = getattr(settings, 'FRONTEND_URL', 'http://localhost:3001')
+
+        frontend_url = getattr(
+            settings, "FRONTEND_URL", "http://localhost:3001"
+        )
         invitation_url = f"{frontend_url}/tenant-invitation?token={token}"
-        
+
         subject = f"Invitation to Join {tenant_name}"
         body = f"""
         <html>
@@ -632,8 +741,13 @@ async def send_tenant_invitation_email(
             </body>
         </html>
         """
-        
+
         await send_email([recipient], subject, body, tenant=None, html=True)
-        logger.info(f"Successfully sent tenant invitation email to {recipient}")
+        logger.info(
+            f"Successfully sent tenant invitation email to {recipient}"
+        )
     except Exception as e:
-        logger.error(f"Failed to send tenant invitation email to {recipient}: {str(e)}", exc_info=True)
+        logger.error(
+            f"Failed to send tenant invitation email to {recipient}: {str(e)}",
+            exc_info=True,
+        )
