@@ -113,7 +113,7 @@ const DemoConversionApproval: React.FC = () => {
                     <h2 className="text-xl font-bold text-red-900 mb-2">Error</h2>
                     <p className="text-red-700">{error}</p>
                     <button
-                        onClick={() => navigate('')}
+                        onClick={() => navigate('/')}
                         className="mt-4 text-red-600 hover:text-red-700 font-medium"
                     >
                         Return to Dashboard
@@ -132,7 +132,7 @@ const DemoConversionApproval: React.FC = () => {
                         This conversion request has already been <strong>{request?.status}</strong>.
                     </p>
                     <button
-                        onClick={() => navigate('')}
+                        onClick={() => navigate('/')}
                         className="mt-4 text-yellow-600 hover:text-yellow-700 font-medium"
                     >
                         Return to Dashboard

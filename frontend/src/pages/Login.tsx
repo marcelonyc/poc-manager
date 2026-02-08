@@ -52,7 +52,7 @@ export default function Login() {
                     tenant_id: null
                 })
                 toast.success('Login successful!')
-                navigate('')
+                navigate('/')
             } else if (data.tenants && data.tenants.length > 0) {
                 // Regular user - needs to select tenant
                 if (data.requires_selection) {
@@ -85,7 +85,7 @@ export default function Login() {
                         tenant_id: selectResponse.data.tenant_id
                     })
                     toast.success('Login successful!')
-                    navigate('')
+                    navigate('/')
                 }
             } else {
                 toast.error('No tenant associations found')

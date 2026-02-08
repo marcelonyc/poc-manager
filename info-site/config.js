@@ -1,10 +1,10 @@
 // Marketing Site Configuration
 const CONFIG = {
     // Demo request URL - Update this to point to your POC Manager instance
-    DEMO_REQUEST_URL: 'http://localhost:5173/demo-request',
+    DEMO_REQUEST_URL: 'app/demo-request',
 
     // Application URL
-    APP_URL: 'http://localhost:5173',
+    APP_URL: 'app/',
 
     // Contact information
     CONTACT_EMAIL: 'sales@pocmanager.io',
