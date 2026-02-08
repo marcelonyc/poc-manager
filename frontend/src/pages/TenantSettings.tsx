@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { api, API_URL } from '../lib/api'
 import { useAuthStore } from '../store/authStore'
+import toast from 'react-hot-toast'
 
 interface Tenant {
     id: number
@@ -48,6 +49,7 @@ export default function TenantSettings() {
     // Demo conversion
     const [conversionReason, setConversionReason] = useState('')
     const [requestingConversion, setRequestingConversion] = useState(false)
+    const [showUpgradeModal, setShowUpgradeModal] = useState(false)
 
     // Test email
     const [testEmailAddress, setTestEmailAddress] = useState('')
@@ -209,12 +211,7 @@ export default function TenantSettings() {
         }
     }
 
-    const handleRequestConversion = async (e: React.FormEvent) => {
-        e.preventDefault()
-        if (!confirm('Are you sure you want to request conversion from demo to full account?')) {
-            return
-        }
-
+    const handleRequestConversion = async () => {
         setRequestingConversion(true)
         setError('')
         setSuccess('')
@@ -223,10 +220,15 @@ export default function TenantSettings() {
             await api.post('/demo/request-conversion', {
                 reason: conversionReason || null
             })
-            setSuccess('Conversion request submitted successfully! A platform administrator will review it.')
+            setShowUpgradeModal(false)
             setConversionReason('')
+            toast.success(
+                'Your upgrade request has been submitted! The platform administrator has been notified and you will receive an email with further details.',
+                { duration: 6000 }
+            )
         } catch (err: any) {
             setError(err.response?.data?.detail || 'Failed to submit conversion request')
+            setShowUpgradeModal(false)
         } finally {
             setRequestingConversion(false)
         }
@@ -624,7 +626,7 @@ export default function TenantSettings() {
                         )}
                     </div>
 
-                    {/* Demo Account Conversion Section */}
+                    {/* Demo Account Upgrade Section */}
                     {tenant?.is_demo && (
                         <div className="bg-white rounded-lg shadow p-6 mb-6">
                             <h2 className="text-2xl font-bold text-gray-900 mb-6">Upgrade Demo Account</h2>
@@ -638,34 +640,71 @@ export default function TenantSettings() {
                                         <h3 className="text-sm font-medium text-yellow-800">This is a Demo Account</h3>
                                         <p className="text-sm text-yellow-700 mt-1">
                                             Your account has the following limits: 2 POCs, 20 tasks, 20 task groups, and 10 resources.
-                                            Request a conversion to remove these limits and access the full platform.
+                                            Request an upgrade to remove these limits and access the full platform.
                                         </p>
                                     </div>
                                 </div>
                             </div>
 
-                            <form onSubmit={handleRequestConversion}>
+                            <button
+                                onClick={() => setShowUpgradeModal(true)}
+                                className="inline-flex items-center gap-2 bg-indigo-600 text-white px-6 py-3 rounded-lg hover:bg-indigo-700 font-semibold shadow-sm transition-colors"
+                            >
+                                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 10l7-7m0 0l7 7m-7-7v18" />
+                                </svg>
+                                Request Upgrade to Full Account
+                            </button>
+                        </div>
+                    )}
+
+                    {/* Upgrade Request Modal */}
+                    {showUpgradeModal && (
+                        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                            <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 p-6">
+                                <div className="flex items-center gap-3 mb-4">
+                                    <div className="flex-shrink-0 h-10 w-10 rounded-full bg-indigo-100 flex items-center justify-center">
+                                        <svg className="h-6 w-6 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 10l7-7m0 0l7 7m-7-7v18" />
+                                        </svg>
+                                    </div>
+                                    <h3 className="text-lg font-semibold text-gray-900">Request Account Upgrade</h3>
+                                </div>
+
+                                <p className="text-sm text-gray-600 mb-4">
+                                    This will send an upgrade request to the platform administrators. You will receive an email with further details once your request has been reviewed.
+                                </p>
+
                                 <div className="mb-4">
                                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        Reason for Conversion (Optional)
+                                        Reason for Upgrade (Optional)
                                     </label>
                                     <textarea
                                         value={conversionReason}
                                         onChange={(e) => setConversionReason(e.target.value)}
-                                        rows={4}
+                                        rows={3}
                                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                                         placeholder="Tell us why you'd like to upgrade to a full account..."
                                     />
                                 </div>
 
-                                <button
-                                    type="submit"
-                                    disabled={requestingConversion}
-                                    className="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 disabled:bg-gray-400"
-                                >
-                                    {requestingConversion ? 'Submitting...' : 'Request Full Account'}
-                                </button>
-                            </form>
+                                <div className="flex justify-end gap-3">
+                                    <button
+                                        onClick={() => { setShowUpgradeModal(false); setConversionReason('') }}
+                                        disabled={requestingConversion}
+                                        className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button
+                                        onClick={handleRequestConversion}
+                                        disabled={requestingConversion}
+                                        className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 disabled:bg-gray-400 transition-colors"
+                                    >
+                                        {requestingConversion ? 'Submitting...' : 'Submit Upgrade Request'}
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                     )}
                 </div>

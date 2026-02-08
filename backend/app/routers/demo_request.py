@@ -426,12 +426,20 @@ async def request_demo_conversion(
     db.commit()
     db.refresh(conversion_request)
 
-    # Get platform admin email
-    platform_admin_email = getattr(settings, "PLATFORM_ADMIN_EMAIL", None)
-    if platform_admin_email:
+    # Send email to ALL platform admin users
+    platform_admins = (
+        db.query(User)
+        .filter(
+            User.role == UserRole.PLATFORM_ADMIN,
+            User.is_active == True,
+        )
+        .all()
+    )
+
+    for admin in platform_admins:
         background_tasks.add_task(
             send_demo_conversion_request_email,
-            platform_admin_email,
+            admin.email,
             current_user.tenant.name,
             current_user.full_name,
             current_user.email,
