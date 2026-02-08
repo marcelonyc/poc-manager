@@ -102,7 +102,8 @@
                 </div>
                 <div class="relative">
                     <div class="bg-white rounded-xl shadow-2xl p-2">
-                        <img src="images/dashboard-screenshot.png" alt="POC Manager Dashboard" class="rounded-lg w-full"
+                        <img src="images/dashboard-screenshot.png" alt="POC Manager Dashboard"
+                            class="rounded-lg w-full modal-image"
                             onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 800 600%22%3E%3Crect fill=%22%23f3f4f6%22 width=%22800%22 height=%22600%22/%3E%3Ctext x=%2250%25%22 y=%2250%25%22 dominant-baseline=%22middle%22 text-anchor=%22middle%22 font-family=%22Arial%22 font-size=%2224%22 fill=%22%236b7280%22%3EDashboard Screenshot%3C/text%3E%3C/svg%3E'">
                     </div>
                     <!-- Floating Stats -->
@@ -449,7 +450,7 @@
             <!-- Flow Diagram -->
             <div class="bg-white rounded-xl shadow-2xl p-8">
                 <div class="relative">
-                    <img src="images/workflow-diagram.png" alt="POC Workflow" class="w-full rounded-lg"
+                    <img src="images/workflow-diagram.png" alt="POC Workflow" class="w-full rounded-lg modal-image"
                         onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 1200 400%22%3E%3Crect fill=%22%23f3f4f6%22 width=%221200%22 height=%22400%22/%3E%3Ctext x=%2250%25%22 y=%2250%25%22 dominant-baseline=%22middle%22 text-anchor=%22middle%22 font-family=%22Arial%22 font-size=%2224%22 fill=%22%236b7280%22%3EWorkflow Diagram%3C/text%3E%3C/svg%3E'">
                 </div>
             </div>
@@ -516,14 +517,15 @@
                     </div>
                 </div>
                 <div class="bg-white rounded-xl shadow-2xl p-2">
-                    <img src="images/sales-engineer-view.png" alt="Sales Engineer Dashboard" class="rounded-lg w-full"
+                    <img src="images/sales-engineer-view.png" alt="Sales Engineer Dashboard"
+                        class="rounded-lg w-full modal-image"
                         onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 800 600%22%3E%3Crect fill=%22%23f3f4f6%22 width=%22800%22 height=%22600%22/%3E%3Ctext x=%2250%25%22 y=%2250%25%22 dominant-baseline=%22middle%22 text-anchor=%22middle%22 font-family=%22Arial%22 font-size=%2224%22 fill=%22%236b7280%22%3ESales Engineer View%3C/text%3E%3C/svg%3E'">
                 </div>
             </div>
 
             <div class="grid md:grid-cols-2 gap-12 items-center">
                 <div class="order-2 md:order-1 bg-white rounded-xl shadow-2xl p-2">
-                    <img src="images/customer-view.png" alt="Customer Dashboard" class="rounded-lg w-full"
+                    <img src="images/customer-view.png" alt="Customer Dashboard" class="rounded-lg w-full modal-image"
                         onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 800 600%22%3E%3Crect fill=%22%23f3f4f6%22 width=%22800%22 height=%22600%22/%3E%3Ctext x=%2250%25%22 y=%2250%25%22 dominant-baseline=%22middle%22 text-anchor=%22middle%22 font-family=%22Arial%22 font-size=%2224%22 fill=%22%236b7280%22%3ECustomer View%3C/text%3E%3C/svg%3E'">
                 </div>
                 <div class="order-1 md:order-2">
@@ -638,6 +640,15 @@
             </svg>
             <span class="help-bubble-tooltip">Support</span>
         </a>
+    </div>
+
+    <!-- Image Modal -->
+    <div id="image-modal" class="image-modal" aria-hidden="true" role="dialog" aria-modal="true">
+        <div class="image-modal-content">
+            <button id="image-modal-close" class="image-modal-close" aria-label="Close image preview">×</button>
+            <img id="image-modal-img" src="" alt="" />
+            <p id="image-modal-caption" class="image-modal-caption"></p>
+        </div>
     </div>
 
     <!-- JavaScript -->
