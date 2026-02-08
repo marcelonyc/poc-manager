@@ -999,9 +999,9 @@ export default function TaskTemplates() {
                                                 <div className={`text-sm ${resource.resource_type === 'LINK' ? 'text-blue-600 underline' : 'text-gray-900'
                                                     } bg-gray-50 p-3 rounded border border-gray-300 font-mono overflow-x-auto`}>
                                                     {resource.resource_type === 'LINK' ? (
-                                                        <Link href={resource.content} target="_blank" rel="noopener noreferrer">
+                                                        <a href={resource.content} target="_blank" rel="noopener noreferrer">
                                                             {resource.content}
-                                                        </Link>
+                                                        </a>
                                                     ) : (
                                                         <pre className="whitespace-pre-wrap">{resource.content}</pre>
                                                     )}
@@ -1228,9 +1228,9 @@ export default function TaskTemplates() {
                                                         )}
                                                         <div className="text-sm text-gray-700 bg-gray-50 p-2 rounded font-mono break-all">
                                                             {resource.resource_type === 'LINK' ? (
-                                                                <Link href={resource.content} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+                                                                <a href={resource.content} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
                                                                     {resource.content}
-                                                                </Link>
+                                                                </a>
                                                             ) : (
                                                                 resource.content
                                                             )}

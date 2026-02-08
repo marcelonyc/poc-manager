@@ -234,7 +234,7 @@ export default function Dashboard() {
                 <div className="mt-8 bg-white shadow rounded-lg p-6">
                     <h2 className="text-xl font-bold text-gray-900 mb-4">Quick Actions</h2>
                     <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-                        <a
+                        <Link
                             to="tenants"
                             className="flex items-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50"
                         >
@@ -243,7 +243,7 @@ export default function Dashboard() {
                             </svg>
                             <span className="text-sm font-medium text-gray-900">Manage Tenants</span>
                         </Link>
-                        <a
+                        <Link
                             to="invitations"
                             className="flex items-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50"
                         >
@@ -252,7 +252,7 @@ export default function Dashboard() {
                             </svg>
                             <span className="text-sm font-medium text-gray-900">Platform Admin Invitations</span>
                         </Link>
-                        <a
+                        <Link
                             to="settings"
                             className="flex items-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50"
                         >
