@@ -31,16 +31,16 @@ function App() {
     return (
         <>
             <Routes>
-                <Route path="/login" element={<Login />} />
-                <Route path="/tenant-selection" element={<TenantSelection />} />
-                <Route path="/forgot-password" element={<ForgotPassword />} />
-                <Route path="/reset-password" element={<ResetPassword />} />
-                <Route path="/demo/request" element={<DemoRequest />} />
-                <Route path="/verify-demo-email" element={<VerifyDemoEmail />} />
-                <Route path="/demo/set-password" element={<SetDemoPassword />} />
-                <Route path="/accept-invitation" element={<AcceptInvitation />} />
-                <Route path="/tenant-invitation" element={<AcceptTenantInvitation />} />
-                <Route path="/poc-invitation" element={<AcceptPOCInvitation />} />
+                <Route path="login" element={<Login />} />
+                <Route path="tenant-selection" element={<TenantSelection />} />
+                <Route path="forgot-password" element={<ForgotPassword />} />
+                <Route path="reset-password" element={<ResetPassword />} />
+                <Route path="demo/request" element={<DemoRequest />} />
+                <Route path="verify-demo-email" element={<VerifyDemoEmail />} />
+                <Route path="demo/set-password" element={<SetDemoPassword />} />
+                <Route path="accept-invitation" element={<AcceptInvitation />} />
+                <Route path="tenant-invitation" element={<AcceptTenantInvitation />} />
+                <Route path="poc-invitation" element={<AcceptPOCInvitation />} />
 
                 {isAuthenticated ? (
                     <Route path="/" element={<Layout />}>
