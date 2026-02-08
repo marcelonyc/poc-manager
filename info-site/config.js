@@ -1,7 +1,7 @@
 // Marketing Site Configuration
 const CONFIG = {
     // Demo request URL - Update this to point to your POC Manager instance
-    DEMO_REQUEST_URL: 'app/demo-request',
+    DEMO_REQUEST_URL: 'app/demo/request',
 
     // Application URL
     APP_URL: 'app/',
