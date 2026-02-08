@@ -25,8 +25,13 @@ import Layout from './components/Layout'
 import HelpBubble from './components/HelpBubble'
 
 function App() {
-    const { isAuthenticated, user } = useAuthStore()
+    const { isAuthenticated, user, _hasHydrated } = useAuthStore()
     const isCustomer = user?.role === 'customer'
+
+    // Don't render routes until the auth state has been rehydrated from storage
+    if (!_hasHydrated) {
+        return null
+    }
 
     return (
         <>
