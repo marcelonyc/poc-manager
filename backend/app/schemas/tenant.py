@@ -1,4 +1,5 @@
 """Tenant schemas"""
+
 from pydantic import BaseModel, EmailStr
 from typing import Optional
 from datetime import datetime
@@ -6,6 +7,7 @@ from datetime import datetime
 
 class TenantBase(BaseModel):
     """Base tenant schema"""
+
     name: str
     slug: str
     primary_color: Optional[str] = "#0066cc"
@@ -16,6 +18,7 @@ class TenantBase(BaseModel):
 
 class TenantCreate(TenantBase):
     """Schema for creating a tenant"""
+
     initial_admin_email: EmailStr
     initial_admin_name: str
     initial_admin_password: str
@@ -23,6 +26,7 @@ class TenantCreate(TenantBase):
 
 class TenantUpdate(BaseModel):
     """Schema for updating a tenant"""
+
     name: Optional[str] = None
     logo_url: Optional[str] = None
     primary_color: Optional[str] = None
@@ -45,6 +49,7 @@ class TenantUpdate(BaseModel):
 
 class TenantEmailConfig(BaseModel):
     """Schema for tenant email configuration"""
+
     custom_mail_server: Optional[str] = None
     custom_mail_port: Optional[int] = None
     custom_mail_username: Optional[str] = None
@@ -55,13 +60,16 @@ class TenantEmailConfig(BaseModel):
 
 class TestEmailRequest(BaseModel):
     """Schema for test email request"""
+
     recipient_email: EmailStr
 
 
 class Tenant(TenantBase):
     """Schema for tenant response"""
+
     id: int
     logo_url: Optional[str] = None
+    is_demo: bool = False
     tenant_admin_limit: int
     administrator_limit: int
     sales_engineer_limit: int
@@ -74,6 +82,6 @@ class Tenant(TenantBase):
     custom_mail_port: Optional[int] = None
     custom_mail_from: Optional[str] = None
     custom_mail_tls: Optional[bool] = None
-    
+
     class Config:
         from_attributes = True
