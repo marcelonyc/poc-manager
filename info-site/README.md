@@ -44,8 +44,8 @@ Edit `config.js` to customize:
 
 ```javascript
 const CONFIG = {
-    DEMO_REQUEST_URL: 'http://localhost:5173/demo-request',  // Change this!
-    APP_URL: 'http://localhost:5173',
+    DEMO_REQUEST_URL: 'app/demo-request',  // Change this!
+    APP_URL: 'app/',
     CONTACT_EMAIL: 'sales@pocmanager.io',
     SUPPORT_EMAIL: 'support@pocmanager.io',
     SOCIAL: {

@@ -24,16 +24,22 @@ export const useAuthStore = create<AuthState>()(
             token: null,
             isAuthenticated: false,
             login: (token, user) => {
-                localStorage.setItem('token', token)
+                localStorage.setItem('access_token', token)
                 set({ token, user, isAuthenticated: true })
             },
             logout: () => {
-                localStorage.removeItem('token')
+                localStorage.removeItem('access_token')
                 set({ token: null, user: null, isAuthenticated: false })
             },
         }),
         {
             name: 'auth-storage',
+            onRehydrateStorage: () => (state) => {
+                // After rehydration, update isAuthenticated based on token presence
+                if (state && state.token) {
+                    state.isAuthenticated = true
+                }
+            },
         }
     )
 )
