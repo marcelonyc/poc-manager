@@ -64,7 +64,7 @@ const DemoRequest: React.FC = () => {
                             Please check your inbox and click the link to verify your email address and set up your password.
                         </p>
                         <button
-                            onClick={() => navigate('login')}
+                            onClick={() => navigate('/login')}
                             className="text-indigo-600 hover:text-indigo-500 font-medium"
                         >
                             Return to Login
@@ -187,7 +187,7 @@ const DemoRequest: React.FC = () => {
 
                 <div className="mt-6 text-center">
                     <button
-                        onClick={() => navigate('login')}
+                        onClick={() => navigate('/login')}
                         className="text-sm text-gray-600 hover:text-gray-800"
                     >
                         Already have an account? <span className="text-indigo-600 font-medium">Sign in</span>

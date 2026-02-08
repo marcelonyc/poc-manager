@@ -40,7 +40,7 @@ export default function TenantSelection() {
 
     if (!state || !state.tenants) {
         // Redirect to login if accessed directly
-        navigate('login');
+        navigate('/login');
         return null;
     }
 
@@ -160,7 +160,7 @@ export default function TenantSelection() {
 
                 <div className="text-center">
                     <button
-                        onClick={() => navigate('login')}
+                        onClick={() => navigate('/login')}
                         className="text-sm font-medium text-indigo-600 hover:text-indigo-500"
                     >
                         Back to login

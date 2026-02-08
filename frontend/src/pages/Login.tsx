@@ -26,7 +26,7 @@ export default function Login() {
     }, [location])
 
     const handleForgotPassword = () => {
-        navigate('forgot-password')
+        navigate('/forgot-password')
     }
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -58,7 +58,7 @@ export default function Login() {
                 // Regular user - needs to select tenant
                 if (data.requires_selection) {
                     // Multiple tenants - redirect to selection page
-                    navigate('tenant-selection', {
+                    navigate('/tenant-selection', {
                         state: {
                             tenants: data.tenants,
                             user: {
@@ -104,7 +104,7 @@ export default function Login() {
             <div className="max-w-md w-full space-y-8">
                 <div className="absolute top-4 right-4">
                     <button
-                        onClick={() => navigate('demo/request')}
+                        onClick={() => navigate('/demo/request')}
                         className="bg-indigo-600 text-white px-6 py-2 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 font-medium"
                     >
                         Setup a test Account

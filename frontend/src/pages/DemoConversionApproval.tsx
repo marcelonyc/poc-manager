@@ -68,7 +68,7 @@ const DemoConversionApproval: React.FC = () => {
             });
 
             alert('Demo conversion approved successfully!');
-            navigate('admin/demo-conversions');
+            navigate('/admin/demo-conversions');
         } catch (err: any) {
             setError(err.response?.data?.detail || 'Failed to approve conversion');
             setSubmitting(false);
@@ -91,7 +91,7 @@ const DemoConversionApproval: React.FC = () => {
             });
 
             alert('Demo conversion rejected');
-            navigate('admin/demo-conversions');
+            navigate('/admin/demo-conversions');
         } catch (err: any) {
             setError(err.response?.data?.detail || 'Failed to reject conversion');
             setSubmitting(false);
