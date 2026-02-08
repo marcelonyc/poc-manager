@@ -1836,7 +1836,7 @@ export default function POCForm({ pocId, initialData, onClose }: POCFormProps) {
                                                             className="text-sm text-blue-600 hover:underline break-all"
                                                         >
                                                             {resource.content}
-                                                        </a>
+                                                        </Link>
                                                     )}
                                                     {resource.resource_type === 'TEXT' && (
                                                         <p className="text-sm text-gray-700 whitespace-pre-wrap">{resource.content}</p>

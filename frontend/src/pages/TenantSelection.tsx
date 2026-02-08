@@ -40,7 +40,7 @@ export default function TenantSelection() {
 
     if (!state || !state.tenants) {
         // Redirect to login if accessed directly
-        navigate('/login');
+        navigate('login');
         return null;
     }
 
@@ -71,7 +71,7 @@ export default function TenantSelection() {
 
             toast.success('Tenant selected successfully!');
             // Redirect to dashboard
-            navigate('/');
+            navigate('');
         } catch (err: any) {
             console.error('Failed to select tenant:', err);
             setError(err.response?.data?.detail || 'Failed to select tenant. Please try again.');
@@ -160,7 +160,7 @@ export default function TenantSelection() {
 
                 <div className="text-center">
                     <button
-                        onClick={() => navigate('/login')}
+                        onClick={() => navigate('login')}
                         className="text-sm font-medium text-indigo-600 hover:text-indigo-500"
                     >
                         Back to login

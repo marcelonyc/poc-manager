@@ -69,7 +69,7 @@ const SetDemoPassword: React.FC = () => {
 
             // Redirect to login after a short delay
             setTimeout(() => {
-                navigate('/login');
+                navigate('login');
             }, 1000);
         } catch (err: any) {
             setError(err.response?.data?.detail || 'Failed to set password');
@@ -111,7 +111,7 @@ const SetDemoPassword: React.FC = () => {
                         </h2>
                         <p className="text-gray-600 mb-6">{error}</p>
                         <button
-                            onClick={() => navigate('/demo/request')}
+                            onClick={() => navigate('demo/request')}
                             className="text-indigo-600 hover:text-indigo-500 font-medium"
                         >
                             Request a New Demo Account

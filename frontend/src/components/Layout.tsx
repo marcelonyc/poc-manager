@@ -48,7 +48,7 @@ export default function Layout() {
 
     const handleLogout = () => {
         logout()
-        navigate('/login')
+        navigate('login')
     }
 
     return (
@@ -94,7 +94,7 @@ export default function Layout() {
                             <div className="hidden sm:ml-6 sm:flex sm:space-x-8">
                                 {user?.role !== 'customer' && (
                                     <Link
-                                        to="/"
+                                        to=""
                                         className="inline-flex items-center px-1 pt-1 text-sm font-medium text-gray-900"
                                     >
                                         Dashboard
@@ -103,19 +103,19 @@ export default function Layout() {
                                 {user?.role === 'platform_admin' && (
                                     <>
                                         <Link
-                                            to="/tenants"
+                                            to="tenants"
                                             className="inline-flex items-center px-1 pt-1 text-sm font-medium text-gray-500 hover:text-gray-900"
                                         >
                                             Tenants
                                         </Link>
                                         <Link
-                                            to="/invitations"
+                                            to="invitations"
                                             className="inline-flex items-center px-1 pt-1 text-sm font-medium text-gray-500 hover:text-gray-900"
                                         >
                                             Invitations
                                         </Link>
                                         <Link
-                                            to="/demo-requests"
+                                            to="demo-requests"
                                             className="inline-flex items-center px-1 pt-1 text-sm font-medium text-gray-500 hover:text-gray-900"
                                         >
                                             Demo Requests
@@ -124,21 +124,21 @@ export default function Layout() {
                                 )}
                                 {(user?.role === 'tenant_admin' || user?.role === 'administrator') && (
                                     <Link
-                                        to="/users"
+                                        to="users"
                                         className="inline-flex items-center px-1 pt-1 text-sm font-medium text-gray-500 hover:text-gray-900"
                                     >
                                         Users
                                     </Link>
                                 )}
                                 <Link
-                                    to="/pocs"
+                                    to="pocs"
                                     className="inline-flex items-center px-1 pt-1 text-sm font-medium text-gray-500 hover:text-gray-900"
                                 >
                                     POCs
                                 </Link>
                                 {user?.role !== 'customer' && (
                                     <Link
-                                        to="/templates"
+                                        to="templates"
                                         className="inline-flex items-center px-1 pt-1 text-sm font-medium text-gray-500 hover:text-gray-900"
                                     >
                                         Templates
@@ -146,7 +146,7 @@ export default function Layout() {
                                 )}
                                 {(user?.role === 'tenant_admin' || user?.role === 'administrator') && (
                                     <Link
-                                        to="/products"
+                                        to="products"
                                         className="inline-flex items-center px-1 pt-1 text-sm font-medium text-gray-500 hover:text-gray-900"
                                     >
                                         Products
@@ -154,7 +154,7 @@ export default function Layout() {
                                 )}
                                 {user?.role !== 'customer' && (
                                     <Link
-                                        to="/settings"
+                                        to="settings"
                                         className="inline-flex items-center px-1 pt-1 text-sm font-medium text-gray-500 hover:text-gray-900"
                                     >
                                         Settings

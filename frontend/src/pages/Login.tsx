@@ -48,12 +48,12 @@ export default function Login() {
                     tenant_id: null
                 })
                 toast.success('Login successful!')
-                navigate('/')
+                navigate('')
             } else if (data.tenants && data.tenants.length > 0) {
                 // Regular user - needs to select tenant
                 if (data.requires_selection) {
                     // Multiple tenants - redirect to selection page
-                    navigate('/tenant-selection', {
+                    navigate('tenant-selection', {
                         state: {
                             tenants: data.tenants,
                             user: {
@@ -81,7 +81,7 @@ export default function Login() {
                         tenant_id: selectResponse.data.tenant_id
                     })
                     toast.success('Login successful!')
-                    navigate('/')
+                    navigate('')
                 }
             } else {
                 toast.error('No tenant associations found')
@@ -98,7 +98,7 @@ export default function Login() {
             <div className="max-w-md w-full space-y-8">
                 <div className="absolute top-4 right-4">
                     <button
-                        onClick={() => navigate('/demo/request')}
+                        onClick={() => navigate('demo/request')}
                         className="bg-indigo-600 text-white px-6 py-2 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 font-medium"
                     >
                         Setup a test Account
@@ -149,9 +149,13 @@ export default function Login() {
 
                     <div className="flex items-center justify-end">
                         <div className="text-sm">
-                            <a href="/forgot-password" className="font-medium text-blue-600 hover:text-blue-700">
+                            <button
+                                type="button"
+                                onClick={handleForgotPassword}
+                                className="font-medium text-blue-600 hover:text-blue-700"
+                            >
                                 Forgot your password?
-                            </a>
+                            </button>
                         </div>
                     </div>
 

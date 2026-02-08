@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { api } from '../lib/api';
 import { useAuthStore } from '../store/authStore';
 
@@ -71,9 +72,9 @@ const DemoLimitsBanner: React.FC = () => {
                             )}
                         </ul>
                         <p className="mt-2">
-                            <a href="/settings" className="font-medium underline text-yellow-800 hover:text-yellow-900">
+                            <Link to="settings" className="font-medium underline text-yellow-800 hover:text-yellow-900">
                                 Upgrade to a full account
-                            </a>
+                            </Link>
                             {' '}to remove these limits.
                         </p>
                     </div>

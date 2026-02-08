@@ -124,7 +124,7 @@ const VerifyDemoEmail: React.FC = () => {
                         </h2>
                         <p className="text-gray-600 mb-6">{error}</p>
                         <button
-                            onClick={() => navigate('/demo/request')}
+                            onClick={() => navigate('demo/request')}
                             className="text-indigo-600 hover:text-indigo-500 font-medium"
                         >
                             Request a New Demo Account

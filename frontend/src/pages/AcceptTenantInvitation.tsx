@@ -69,7 +69,7 @@ export default function AcceptTenantInvitation() {
             toast.success(response.data.message || 'Successfully accepted invitation!')
 
             // Redirect to login to refresh tenant list
-            navigate('/login?message=Invitation accepted! Please log in to access your new tenant.')
+            navigate('login?message=Invitation accepted! Please log in to access your new tenant.')
         } catch (err: any) {
             setError(err.response?.data?.detail || 'Failed to accept invitation')
             toast.error(err.response?.data?.detail || 'Failed to accept invitation')
@@ -110,7 +110,7 @@ export default function AcceptTenantInvitation() {
                         <h2 className="mt-4 text-xl font-semibold text-gray-900">Invalid Invitation</h2>
                         <p className="mt-2 text-gray-600">{error}</p>
                         <button
-                            onClick={() => navigate('/login')}
+                            onClick={() => navigate('login')}
                             className="mt-6 w-full px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
                         >
                             Go to Login
@@ -230,7 +230,7 @@ export default function AcceptTenantInvitation() {
                         </button>
 
                         <button
-                            onClick={() => navigate('/login')}
+                            onClick={() => navigate('login')}
                             className="w-full py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
                         >
                             Cancel

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { Link } from 'react-router-dom'
 import { useAuthStore } from '../store/authStore'
 import { api } from '../lib/api'
 
@@ -234,25 +235,25 @@ export default function Dashboard() {
                     <h2 className="text-xl font-bold text-gray-900 mb-4">Quick Actions</h2>
                     <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
                         <a
-                            href="/tenants"
+                            to="tenants"
                             className="flex items-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50"
                         >
                             <svg className="h-6 w-6 text-indigo-600 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
                             </svg>
                             <span className="text-sm font-medium text-gray-900">Manage Tenants</span>
-                        </a>
+                        </Link>
                         <a
-                            href="/invitations"
+                            to="invitations"
                             className="flex items-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50"
                         >
                             <svg className="h-6 w-6 text-indigo-600 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                             </svg>
                             <span className="text-sm font-medium text-gray-900">Platform Admin Invitations</span>
-                        </a>
+                        </Link>
                         <a
-                            href="/settings"
+                            to="settings"
                             className="flex items-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50"
                         >
                             <svg className="h-6 w-6 text-indigo-600 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -260,7 +261,7 @@ export default function Dashboard() {
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                             </svg>
                             <span className="text-sm font-medium text-gray-900">Platform Settings</span>
-                        </a>
+                        </Link>
                     </div>
                 </div>
             </div>
@@ -388,7 +389,7 @@ export default function Dashboard() {
                                 <ul className="divide-y divide-gray-200">
                                     {recentPOCs.map((poc) => (
                                         <li key={poc.id} className="px-6 py-4 hover:bg-gray-50">
-                                            <a href={`/pocs/${poc.id}`} className="block">
+                                            <Link href={`/pocs/${poc.id}`} className="block">
                                                 <div className="flex items-center justify-between">
                                                     <div>
                                                         <h3 className="text-lg font-medium text-gray-900">{poc.title}</h3>
@@ -398,7 +399,7 @@ export default function Dashboard() {
                                                         {poc.status}
                                                     </span>
                                                 </div>
-                                            </a>
+                                            </Link>
                                         </li>
                                     ))}
                                 </ul>
@@ -461,7 +462,7 @@ export default function Dashboard() {
                                 <ul className="divide-y divide-gray-200">
                                     {allPOCs.map((poc) => (
                                         <li key={poc.id} className="px-6 py-4 hover:bg-gray-50">
-                                            <a href={`/pocs/${poc.id}`} className="block">
+                                            <Link href={`/pocs/${poc.id}`} className="block">
                                                 <div className="flex items-center justify-between">
                                                     <div className="flex-1">
                                                         <div className="flex items-center justify-between">
@@ -476,7 +477,7 @@ export default function Dashboard() {
                                                         </p>
                                                     </div>
                                                 </div>
-                                            </a>
+                                            </Link>
                                         </li>
                                     ))}
                                 </ul>

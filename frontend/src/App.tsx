@@ -44,7 +44,7 @@ function App() {
 
                 {isAuthenticated ? (
                     <Route path="/" element={<Layout />}>
-                        <Route index element={isCustomer ? <Navigate to="/pocs" replace /> : <Dashboard />} />
+                        <Route index element={isCustomer ? <Navigate to="pocs" replace /> : <Dashboard />} />
                         <Route path="pocs" element={<POCList />} />
                         <Route path="pocs/:id" element={<POCDetail />} />
                         <Route path="templates" element={<TaskTemplates />} />
@@ -57,7 +57,7 @@ function App() {
                         <Route path="admin/demo-conversions/:requestId" element={<DemoConversionApproval />} />
                     </Route>
                 ) : (
-                    <Route path="*" element={<Navigate to="/login" replace />} />
+                    <Route path="*" element={<Navigate to="login" replace />} />
                 )}
             </Routes>
             <HelpBubble />

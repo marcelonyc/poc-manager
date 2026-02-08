@@ -68,7 +68,7 @@ export default function AcceptInvitation() {
             })
 
             // Redirect to login with success message
-            navigate('/login?message=Account created successfully. Please log in.')
+            navigate('login?message=Account created successfully. Please log in.')
         } catch (err: any) {
             setError(err.response?.data?.detail || 'Failed to accept invitation')
         } finally {
@@ -108,7 +108,7 @@ export default function AcceptInvitation() {
                         <h2 className="mt-4 text-2xl font-bold text-gray-900">Invalid Invitation</h2>
                         <p className="mt-2 text-gray-600">{error}</p>
                         <button
-                            onClick={() => navigate('/login')}
+                            onClick={() => navigate('login')}
                             className="mt-6 bg-indigo-600 text-white px-6 py-2 rounded-lg hover:bg-indigo-700"
                         >
                             Go to Login
@@ -199,7 +199,7 @@ export default function AcceptInvitation() {
                 <div className="mt-6 text-center text-sm text-gray-600">
                     Already have an account?{' '}
                     <button
-                        onClick={() => navigate('/login')}
+                        onClick={() => navigate('login')}
                         className="text-indigo-600 hover:text-indigo-500 font-medium"
                     >
                         Log in

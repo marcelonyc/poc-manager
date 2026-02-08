@@ -1,4 +1,5 @@
 import { BookOpenIcon, QuestionMarkCircleIcon } from '@heroicons/react/24/outline'
+import { Link } from 'react-router-dom'
 
 export default function HelpBubble() {
     return (
@@ -11,8 +12,8 @@ export default function HelpBubble() {
             gap: '0.75rem',
             zIndex: 1000
         }}>
-            <a
-                href="/docs"
+            <Link
+                to="docs"
                 target="_blank"
                 style={{
                     position: 'relative',
@@ -72,7 +73,7 @@ export default function HelpBubble() {
                 >
                     Documentation
                 </span>
-            </a>
+            </Link>
             <a
                 href="https://github.com/marcelonyc/poc-manager/issues/new?template=saas-question.md"
                 target="_blank"
@@ -135,7 +136,7 @@ export default function HelpBubble() {
                 >
                     Support
                 </span>
-            </a>
+            </Link>
         </div>
     )
 }

@@ -529,9 +529,9 @@ export default function CustomerPOCView({ pocId }: CustomerPOCViewProps) {
                                         <div className={`text-sm ${resource.resource_type === 'LINK' ? 'text-blue-600 underline' : 'text-gray-900'
                                             } bg-gray-50 p-3 rounded border border-gray-300 font-mono overflow-x-auto`}>
                                             {resource.resource_type === 'LINK' ? (
-                                                <a href={resource.content} target="_blank" rel="noopener noreferrer">
+                                                <Link href={resource.content} target="_blank" rel="noopener noreferrer">
                                                     {resource.content}
-                                                </a>
+                                                </Link>
                                             ) : (
                                                 <pre className="whitespace-pre-wrap">{resource.content}</pre>
                                             )}

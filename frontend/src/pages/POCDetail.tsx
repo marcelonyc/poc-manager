@@ -60,7 +60,7 @@ export default function POCDetail() {
             <div className="p-6">
                 <div className="mb-4">
                     <button
-                        onClick={() => navigate('/pocs')}
+                        onClick={() => navigate('pocs')}
                         className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
                     >
                         ← Back to List
@@ -114,7 +114,7 @@ export default function POCDetail() {
                                 </button>
                             )}
                             <button
-                                onClick={() => navigate('/pocs')}
+                                onClick={() => navigate('pocs')}
                                 className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
                             >
                                 Back to List

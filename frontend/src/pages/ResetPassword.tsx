@@ -17,7 +17,7 @@ export default function ResetPassword() {
     useEffect(() => {
         if (!token) {
             toast.error('Invalid reset link')
-            navigate('/login')
+            navigate('login')
             return
         }
 
@@ -56,7 +56,7 @@ export default function ResetPassword() {
                 new_password: newPassword
             })
             toast.success('Password reset successfully!')
-            setTimeout(() => navigate('/login'), 2000)
+            setTimeout(() => navigate('login'), 2000)
         } catch (error: any) {
             toast.error(error.response?.data?.detail || 'Failed to reset password')
         } finally {
