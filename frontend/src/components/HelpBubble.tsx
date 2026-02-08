@@ -136,7 +136,7 @@ export default function HelpBubble() {
                 >
                     Support
                 </span>
-            </Link>
+            </a>
         </div>
     )
 }

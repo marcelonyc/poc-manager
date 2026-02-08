@@ -389,7 +389,7 @@ export default function Dashboard() {
                                 <ul className="divide-y divide-gray-200">
                                     {recentPOCs.map((poc) => (
                                         <li key={poc.id} className="px-6 py-4 hover:bg-gray-50">
-                                            <Link href={`/pocs/${poc.id}`} className="block">
+                                            <Link to={`pocs/${poc.id}`} className="block">
                                                 <div className="flex items-center justify-between">
                                                     <div>
                                                         <h3 className="text-lg font-medium text-gray-900">{poc.title}</h3>
@@ -462,7 +462,7 @@ export default function Dashboard() {
                                 <ul className="divide-y divide-gray-200">
                                     {allPOCs.map((poc) => (
                                         <li key={poc.id} className="px-6 py-4 hover:bg-gray-50">
-                                            <Link href={`/pocs/${poc.id}`} className="block">
+                                            <Link to={`pocs/${poc.id}`} className="block">
                                                 <div className="flex items-center justify-between">
                                                     <div className="flex-1">
                                                         <div className="flex items-center justify-between">
