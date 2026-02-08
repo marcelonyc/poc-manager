@@ -52,7 +52,8 @@ export default function Login() {
                     tenant_id: null
                 })
                 toast.success('Login successful!')
-                navigate('/')
+                // Small delay to ensure state is updated before navigation
+                setTimeout(() => navigate('/'), 0)
             } else if (data.tenants && data.tenants.length > 0) {
                 // Regular user - needs to select tenant
                 if (data.requires_selection) {
@@ -85,7 +86,8 @@ export default function Login() {
                         tenant_id: selectResponse.data.tenant_id
                     })
                     toast.success('Login successful!')
-                    navigate('/')
+                    // Small delay to ensure state is updated before navigation
+                    setTimeout(() => navigate('/'), 0)
                 }
             } else {
                 toast.error('No tenant associations found')

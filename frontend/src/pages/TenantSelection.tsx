@@ -70,8 +70,8 @@ export default function TenantSelection() {
             });
 
             toast.success('Tenant selected successfully!');
-            // Redirect to dashboard
-            navigate('/');
+            // Redirect to dashboard - small delay to ensure state is updated
+            setTimeout(() => navigate('/'), 0);
         } catch (err: any) {
             console.error('Failed to select tenant:', err);
             setError(err.response?.data?.detail || 'Failed to select tenant. Please try again.');
