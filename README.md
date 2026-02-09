@@ -412,17 +412,19 @@ docker compose -f docker-compose.prod.yml up -d
 
 ## 📝 License
 
-This project is proprietary and confidential.
+This project is provided as-is for any use case - personal, commercial, private, or otherwise. You are free to use, modify, distribute this code without restriction or attribution requirement.
+
+No warranty is provided. Use at your own risk.
+
 
 ## 👥 Support
 
-For support, email support@pocmanager.com or open an issue in the repository.
+For support, open an issue in the repository.
 
 ## 🗺 Roadmap
 
 - [ ] Advanced analytics and reporting
 - [ ] Mobile app (iOS/Android)
-- [ ] Advanced integrations (Salesforce, HubSpot)
 - [ ] AI-powered POC recommendations
 - [ ] Real-time collaboration features
 - [ ] Custom workflows and automation
