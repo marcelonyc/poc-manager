@@ -164,15 +164,57 @@ def delete_success_criteria(
 def create_comment(
     poc_id: int,
     comment_data: CommentCreate,
+    task_id: int = None,
+    task_group_id: int = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Create a comment on a POC, task, or task group"""
+    """Create a comment on a POC task or task group"""
+    # Validate that at least one task or task group is specified
+    if not task_id and not task_group_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Comment must be associated with either a task (task_id) or task group (task_group_id)",
+        )
+
+    if task_id and task_group_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Comment must be associated with either a task or task group, not both",
+        )
+
+    # Verify POC exists
     poc = db.query(POC).filter(POC.id == poc_id).first()
     if not poc:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="POC not found"
         )
+
+    # Validate task or task group exists and belongs to this POC
+    if task_id:
+        task = (
+            db.query(POCTask)
+            .filter(POCTask.id == task_id, POCTask.poc_id == poc_id)
+            .first()
+        )
+        if not task:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Task not found in this POC",
+            )
+    elif task_group_id:
+        task_group = (
+            db.query(POCTaskGroup)
+            .filter(
+                POCTaskGroup.id == task_group_id, POCTaskGroup.poc_id == poc_id
+            )
+            .first()
+        )
+        if not task_group:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Task group not found in this POC",
+            )
 
     # Customers cannot create internal comments
     if current_user.role == UserRole.CUSTOMER and comment_data.is_internal:
@@ -186,8 +228,8 @@ def create_comment(
         content=comment_data.content,
         user_id=current_user.id,
         poc_id=poc_id,
-        poc_task_id=comment_data.poc_task_id,
-        poc_task_group_id=comment_data.poc_task_group_id,
+        poc_task_id=task_id,
+        poc_task_group_id=task_group_id,
         is_internal=comment_data.is_internal,
     )
     db.add(comment)
@@ -223,12 +265,57 @@ def list_comments(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """List comments for a POC"""
+    """List comments for a POC task or task group"""
+    # Validate that at least one task or task group is specified
+    if not task_id and not task_group_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Comments must be filtered by either task_id or task_group_id",
+        )
+
+    if task_id and task_group_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Filter by either a task or task group, not both",
+        )
+
+    # Verify POC exists
+    poc = db.query(POC).filter(POC.id == poc_id).first()
+    if not poc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="POC not found"
+        )
+
+    # Build query for comments
     query = db.query(Comment).filter(Comment.poc_id == poc_id)
 
     if task_id:
+        # Verify task exists and belongs to this POC
+        task = (
+            db.query(POCTask)
+            .filter(POCTask.id == task_id, POCTask.poc_id == poc_id)
+            .first()
+        )
+        if not task:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Task not found in this POC",
+            )
         query = query.filter(Comment.poc_task_id == task_id)
-    elif task_group_id:
+    else:  # task_group_id
+        # Verify task group exists and belongs to this POC
+        task_group = (
+            db.query(POCTaskGroup)
+            .filter(
+                POCTaskGroup.id == task_group_id, POCTaskGroup.poc_id == poc_id
+            )
+            .first()
+        )
+        if not task_group:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Task group not found in this POC",
+            )
         query = query.filter(Comment.poc_task_group_id == task_group_id)
 
     # Hide internal comments from customers
@@ -251,12 +338,25 @@ def list_comments(
             "is_internal": comment.is_internal,
             "created_at": comment.created_at,
             "updated_at": comment.updated_at,
-            "user": {
+            "guest_name": comment.guest_name,
+            "guest_email": comment.guest_email,
+        }
+
+        # Add user info if comment is from authenticated user
+        if comment.user:
+            comment_dict["user"] = {
                 "id": comment.user.id,
                 "email": comment.user.email,
                 "full_name": comment.user.full_name,
-            },
-        }
+            }
+        else:
+            # Guest comment
+            comment_dict["user"] = {
+                "id": None,
+                "email": comment.guest_email,
+                "full_name": comment.guest_name,
+            }
+
         result.append(comment_dict)
 
     return result

@@ -5,6 +5,7 @@ import { useAuthStore } from '../store/authStore'
 import { useNavigate } from 'react-router-dom'
 import CommentsModal from './CommentsModal'
 import LogoUpload from './LogoUpload'
+import ResourcesModal from './ResourcesModal'
 import TaskAssignmentModal from './TaskAssignmentModal'
 
 interface Product {
@@ -166,6 +167,12 @@ export default function POCForm({ pocId, initialData, onClose }: POCFormProps) {
     const [showCommentsModal, setShowCommentsModal] = useState(false)
     const [commentsModalTaskId, setCommentsModalTaskId] = useState<number | undefined>()
     const [commentsModalTaskGroupId, setCommentsModalTaskGroupId] = useState<number | undefined>()
+
+    // Task Resources Modal
+    const [showResourcesModal, setShowResourcesModal] = useState(false)
+    const [resourcesModalTaskId, setResourcesModalTaskId] = useState<number | undefined>()
+    const [resourcesModalTaskGroupId, setResourcesModalTaskGroupId] = useState<number | undefined>()
+    const [resourcesModalTitle, setResourcesModalTitle] = useState('')
 
     // Task Assignment Modal
     const [showAssignmentModal, setShowAssignmentModal] = useState(false)
@@ -1589,6 +1596,18 @@ export default function POCForm({ pocId, initialData, onClose }: POCFormProps) {
                                                             💬 Comments
                                                         </button>
                                                         <button
+                                                            onClick={() => {
+                                                                setResourcesModalTaskId(task.id)
+                                                                setResourcesModalTaskGroupId(undefined)
+                                                                setResourcesModalTitle(task.title)
+                                                                setShowResourcesModal(true)
+                                                            }}
+                                                            className="px-3 py-1.5 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 text-sm font-medium"
+                                                            title="View and manage resources"
+                                                        >
+                                                            📚 Resources
+                                                        </button>
+                                                        <button
                                                             onClick={() => handleDeleteTask(task.id!)}
                                                             className="text-red-600 hover:text-red-800"
                                                         >
@@ -1800,6 +1819,18 @@ export default function POCForm({ pocId, initialData, onClose }: POCFormProps) {
                                                                 💬 Comments
                                                             </button>
                                                             <button
+                                                                onClick={() => {
+                                                                    setResourcesModalTaskId(undefined)
+                                                                    setResourcesModalTaskGroupId(group.id)
+                                                                    setResourcesModalTitle(group.title)
+                                                                    setShowResourcesModal(true)
+                                                                }}
+                                                                className="px-3 py-1.5 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 text-sm font-medium"
+                                                                title="View and manage resources"
+                                                            >
+                                                                📚 Resources
+                                                            </button>
+                                                            <button
                                                                 onClick={() => handleDeleteTaskGroup(group.id!)}
                                                                 className="text-red-600 hover:text-red-800"
                                                             >
@@ -1897,6 +1928,18 @@ export default function POCForm({ pocId, initialData, onClose }: POCFormProps) {
                                                                                     title="View Comments"
                                                                                 >
                                                                                     💬
+                                                                                </button>
+                                                                                <button
+                                                                                    onClick={() => {
+                                                                                        setResourcesModalTaskId(task.id)
+                                                                                        setResourcesModalTaskGroupId(undefined)
+                                                                                        setResourcesModalTitle(task.title)
+                                                                                        setShowResourcesModal(true)
+                                                                                    }}
+                                                                                    className="px-2 py-1 bg-blue-50 text-blue-700 rounded hover:bg-blue-100 text-xs font-medium"
+                                                                                    title="Resources"
+                                                                                >
+                                                                                    📚
                                                                                 </button>
                                                                             </div>
                                                                         )}
@@ -2285,6 +2328,22 @@ export default function POCForm({ pocId, initialData, onClose }: POCFormProps) {
                     />
                 )
             }
+
+            {/* Resources Modal */}
+            {showResourcesModal && pocId && (
+                <ResourcesModal
+                    pocId={pocId}
+                    taskId={resourcesModalTaskId}
+                    taskGroupId={resourcesModalTaskGroupId}
+                    taskTitle={resourcesModalTitle}
+                    onClose={() => {
+                        setShowResourcesModal(false)
+                        setResourcesModalTaskId(undefined)
+                        setResourcesModalTaskGroupId(undefined)
+                        setResourcesModalTitle('')
+                    }}
+                />
+            )}
 
             {/* Document Generation Modal */}
             {

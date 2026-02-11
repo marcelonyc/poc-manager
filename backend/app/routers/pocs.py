@@ -21,6 +21,7 @@ from pathlib import Path
 from app.database import get_db
 from app.models.user import User, UserRole
 from app.models.poc import POC, POCStatus, POCParticipant
+from app.models.poc_public_link import POCPublicLink
 from app.models.product import Product
 from app.models.poc_invitation import POCInvitation, POCInvitationStatus
 from app.schemas.poc import (
@@ -30,11 +31,17 @@ from app.schemas.poc import (
     POCDetail,
     POCParticipantAdd,
 )
+from app.schemas.poc_public_link import (
+    POCPublicLinkCreate,
+    POCPublicLinkResponse,
+    POCPublicLinkDetail,
+)
 from app.auth import (
     require_sales_engineer,
     get_current_user,
     get_current_tenant_id,
     check_tenant_access,
+    require_tenant_admin,
 )
 from app.services.email import send_poc_invitation_email_with_tracking
 from app.services.document_generator import DocumentGenerator
@@ -695,3 +702,167 @@ def delete_poc_logo(
     db.commit()
 
     return {"message": "Customer logo deleted successfully"}
+
+
+# ============ PUBLIC LINK ENDPOINTS ============
+
+
+@router.post(
+    "/{poc_id}/public-link",
+    response_model=POCPublicLinkDetail,
+    status_code=status.HTTP_201_CREATED,
+)
+def create_public_link(
+    poc_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_tenant_admin),
+    tenant_id: int = Depends(get_current_tenant_id),
+):
+    """Create a public link for a POC (Tenant Admin only)"""
+    # Check if POC exists and belongs to the tenant
+    poc = (
+        db.query(POC)
+        .filter(POC.id == poc_id, POC.tenant_id == tenant_id)
+        .first()
+    )
+    if not poc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="POC not found",
+        )
+
+    # Check if a link already exists for this POC
+    existing_link = (
+        db.query(POCPublicLink)
+        .filter(
+            POCPublicLink.poc_id == poc_id,
+            POCPublicLink.tenant_id == tenant_id,
+            POCPublicLink.is_deleted == False,
+        )
+        .first()
+    )
+
+    if existing_link:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="A public link already exists for this POC. Delete it first to create a new one.",
+        )
+
+    # Create new public link
+    public_link = POCPublicLink(
+        poc_id=poc_id,
+        tenant_id=tenant_id,
+        created_by=current_user.id,
+        access_token=POCPublicLink.generate_token(),
+    )
+
+    db.add(public_link)
+    db.commit()
+    db.refresh(public_link)
+
+    # Return with access URL
+    access_url = f"{settings.FRONTEND_URL}/share/{public_link.access_token}"
+
+    return POCPublicLinkDetail(
+        id=public_link.id,
+        poc_id=public_link.poc_id,
+        access_token=public_link.access_token,
+        access_url=access_url,
+        created_at=public_link.created_at,
+        created_by=public_link.created_by,
+    )
+
+
+@router.get("/{poc_id}/public-link", response_model=POCPublicLinkDetail)
+def get_public_link(
+    poc_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_tenant_admin),
+    tenant_id: int = Depends(get_current_tenant_id),
+):
+    """Get the public link for a POC (Tenant Admin only)"""
+    # Check if POC exists and belongs to the tenant
+    poc = (
+        db.query(POC)
+        .filter(POC.id == poc_id, POC.tenant_id == tenant_id)
+        .first()
+    )
+    if not poc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="POC not found",
+        )
+
+    # Get the public link
+    public_link = (
+        db.query(POCPublicLink)
+        .filter(
+            POCPublicLink.poc_id == poc_id,
+            POCPublicLink.tenant_id == tenant_id,
+            POCPublicLink.is_deleted == False,
+        )
+        .first()
+    )
+
+    if not public_link:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No public link exists for this POC",
+        )
+
+    # Return with access URL
+    access_url = f"{settings.FRONTEND_URL}/share/{public_link.access_token}"
+
+    return POCPublicLinkDetail(
+        id=public_link.id,
+        poc_id=public_link.poc_id,
+        access_token=public_link.access_token,
+        access_url=access_url,
+        created_at=public_link.created_at,
+        created_by=public_link.created_by,
+    )
+
+
+@router.delete("/{poc_id}/public-link", status_code=status.HTTP_204_NO_CONTENT)
+def delete_public_link(
+    poc_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_tenant_admin),
+    tenant_id: int = Depends(get_current_tenant_id),
+):
+    """Delete the public link for a POC (Tenant Admin only)"""
+    # Check if POC exists and belongs to the tenant
+    poc = (
+        db.query(POC)
+        .filter(POC.id == poc_id, POC.tenant_id == tenant_id)
+        .first()
+    )
+    if not poc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="POC not found",
+        )
+
+    # Get the public link
+    public_link = (
+        db.query(POCPublicLink)
+        .filter(
+            POCPublicLink.poc_id == poc_id,
+            POCPublicLink.tenant_id == tenant_id,
+            POCPublicLink.is_deleted == False,
+        )
+        .first()
+    )
+
+    if not public_link:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No public link exists for this POC",
+        )
+
+    # Soft delete the link
+    public_link.is_deleted = True
+    public_link.deleted_at = datetime.utcnow()
+    db.commit()
+
+    return None

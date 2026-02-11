@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { api } from '../lib/api'
 import toast from 'react-hot-toast'
 import CommentsModal from './CommentsModal'
+import ResourcesModal from './ResourcesModal'
 
 interface TaskAssignee {
     id: number
@@ -30,9 +31,15 @@ interface POCTaskGroup {
 
 interface CustomerPOCViewProps {
     pocId: number
+    isPublicAccess?: boolean
+    publicPocData?: any
+    publicPocTasks?: any[]
+    publicPocTaskGroups?: any[]
+    publicSuccessCriteria?: any[]
+    publicAccessToken?: string
 }
 
-export default function CustomerPOCView({ pocId }: CustomerPOCViewProps) {
+export default function CustomerPOCView({ pocId, isPublicAccess = false, publicPocData, publicPocTasks, publicPocTaskGroups, publicSuccessCriteria, publicAccessToken }: CustomerPOCViewProps) {
     const [loading, setLoading] = useState(true)
     const [formData, setFormData] = useState<any>({})
     const [pocTasks, setPocTasks] = useState<POCTask[]>([])
@@ -47,25 +54,48 @@ export default function CustomerPOCView({ pocId }: CustomerPOCViewProps) {
     const [showDocumentModal, setShowDocumentModal] = useState(false)
     const [generatingDocument, setGeneratingDocument] = useState(false)
 
+    // Resources Modal State
+    const [showResourcesModal, setShowResourcesModal] = useState(false)
+    const [resourcesModalTaskId, setResourcesModalTaskId] = useState<number | undefined>()
+    const [resourcesModalTaskGroupId, setResourcesModalTaskGroupId] = useState<number | undefined>()
+    const [resourcesModalTitle, setResourcesModalTitle] = useState('')
+
     // Criteria Task List Modal
     const [showCriteriaTaskListModal, setShowCriteriaTaskListModal] = useState(false)
     const [criteriaTaskListTitle, setCriteriaTaskListTitle] = useState('')
     const [criteriaTaskListNames, setCriteriaTaskListNames] = useState<string[]>([])
 
     useEffect(() => {
-        fetchPOCData()
+        if (isPublicAccess && publicPocData) {
+            // Use the provided public POC data
+            setFormData({
+                title: publicPocData.title || '',
+                description: publicPocData.description || '',
+                customer_company_name: publicPocData.customer_company_name || '',
+                executive_summary: publicPocData.executive_summary || '',
+                objectives: publicPocData.objectives || '',
+                start_date: publicPocData.start_date || '',
+                end_date: publicPocData.end_date || '',
+                product_ids: publicPocData.products?.map((p: any) => p.id) || ''
+            })
+            setSuccessCriteria(publicSuccessCriteria || [])
+            setPocTasks(publicPocTasks || [])
+            setPocTaskGroups(publicPocTaskGroups || [])
+            setLoading(false)
+        } else {
+            fetchPOCData()
+        }
     }, [pocId])
 
     const fetchPOCData = async () => {
         try {
             setLoading(true)
-            const [pocResponse, criteriaResponse, tasksResponse, taskGroupsResponse, resourcesResponse] = await Promise.all([
-                api.get(`/pocs/${pocId}`),
-                api.get(`/pocs/${pocId}/success-criteria`),
-                api.get(`/tasks/pocs/${pocId}/tasks`),
-                api.get(`/tasks/pocs/${pocId}/task-groups`),
-                api.get(`/pocs/${pocId}/resources`)
-            ])
+
+            const pocResponse = await api.get(`/pocs/${pocId}`)
+            const criteriaResponse = await api.get(`/pocs/${pocId}/success-criteria`)
+            const tasksResponse = await api.get(`/tasks/pocs/${pocId}/tasks`)
+            const taskGroupsResponse = await api.get(`/tasks/pocs/${pocId}/task-groups`)
+            const resourcesResponse = await api.get(`/pocs/${pocId}/resources`)
 
             const poc = pocResponse.data
             setFormData({
@@ -499,6 +529,18 @@ export default function CustomerPOCView({ pocId }: CustomerPOCViewProps) {
                                                     </span>
                                                     <button
                                                         onClick={() => {
+                                                            setResourcesModalTaskId(task.id)
+                                                            setResourcesModalTaskGroupId(undefined)
+                                                            setResourcesModalTitle(task.title)
+                                                            setShowResourcesModal(true)
+                                                        }}
+                                                        className="px-3 py-1.5 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 text-sm font-medium transition-colors"
+                                                        title="View and manage resources"
+                                                    >
+                                                        📚 Resources
+                                                    </button>
+                                                    <button
+                                                        onClick={() => {
                                                             setCommentsModalTaskId(task.id)
                                                             setCommentsModalTaskGroupId(undefined)
                                                             setShowCommentsModal(true)
@@ -558,6 +600,18 @@ export default function CustomerPOCView({ pocId }: CustomerPOCViewProps) {
                                                         </span>
                                                         <button
                                                             onClick={() => {
+                                                                setResourcesModalTaskId(undefined)
+                                                                setResourcesModalTaskGroupId(group.id)
+                                                                setResourcesModalTitle(group.title)
+                                                                setShowResourcesModal(true)
+                                                            }}
+                                                            className="px-3 py-1.5 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 text-sm font-medium transition-colors"
+                                                            title="View and manage resources"
+                                                        >
+                                                            📚 Resources
+                                                        </button>
+                                                        <button
+                                                            onClick={() => {
                                                                 setCommentsModalTaskId(undefined)
                                                                 setCommentsModalTaskGroupId(group.id)
                                                                 setShowCommentsModal(true)
@@ -602,6 +656,18 @@ export default function CustomerPOCView({ pocId }: CustomerPOCViewProps) {
                                                                             <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(task.status)}`}>
                                                                                 {getStatusLabel(task.status)}
                                                                             </span>
+                                                                            <button
+                                                                                onClick={() => {
+                                                                                    setResourcesModalTaskId(task.id)
+                                                                                    setResourcesModalTaskGroupId(undefined)
+                                                                                    setResourcesModalTitle(task.title)
+                                                                                    setShowResourcesModal(true)
+                                                                                }}
+                                                                                className="px-2 py-1 bg-blue-50 text-blue-700 rounded hover:bg-blue-100 text-xs font-medium transition-colors"
+                                                                                title="Resources"
+                                                                            >
+                                                                                📚
+                                                                            </button>
                                                                             <button
                                                                                 onClick={() => {
                                                                                     setCommentsModalTaskId(task.id)
@@ -679,10 +745,30 @@ export default function CustomerPOCView({ pocId }: CustomerPOCViewProps) {
                     pocId={pocId}
                     taskId={commentsModalTaskId}
                     taskGroupId={commentsModalTaskGroupId}
+                    isPublicAccess={isPublicAccess}
+                    publicPocData={publicPocData}
                     onClose={() => {
                         setShowCommentsModal(false)
                         setCommentsModalTaskId(undefined)
                         setCommentsModalTaskGroupId(undefined)
+                    }}
+                />
+            )}
+
+            {/* Resources Modal */}
+            {showResourcesModal && (
+                <ResourcesModal
+                    pocId={pocId}
+                    taskId={resourcesModalTaskId}
+                    taskGroupId={resourcesModalTaskGroupId}
+                    taskTitle={resourcesModalTitle}
+                    isPublicAccess={isPublicAccess}
+                    publicAccessToken={publicAccessToken}
+                    onClose={() => {
+                        setShowResourcesModal(false)
+                        setResourcesModalTaskId(undefined)
+                        setResourcesModalTaskGroupId(undefined)
+                        setResourcesModalTitle('')
                     }}
                 />
             )}

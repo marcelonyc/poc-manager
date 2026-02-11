@@ -58,10 +58,10 @@ POC Manager is a multi-tenant web application designed to streamline the entire 
     Jump to documentation for your role:
     
     - [Platform Admin](platform-admin/tenants.md)
-    - [Tenant Admin](tenant-admin/users.md)
+    - [Tenant Admin](tenant-admin/users.md) | [Manage Public Links](tenant-admin/public-share-links.md)
     - [Administrator](administrator/task-templates.md)
     - [Sales Engineer](sales-engineer/poc-overview.md)
-    - [Customer](customer/viewing-pocs.md)
+    - [Customer](customer/viewing-pocs.md) | [Access Public POCs](customer/accessing-public-pocs.md)
 
 === "Features"
 
@@ -71,6 +71,7 @@ POC Manager is a multi-tenant web application designed to streamline the entire 
     - [Comments System](features/comments.md)
     - [Resources](features/resources.md)
     - [Task Assignment](features/task-assignment.md)
+    - [Public Share Links](features/public-share-links.md)
     - [Document Generation](features/documents.md)
 
 ## Getting Help

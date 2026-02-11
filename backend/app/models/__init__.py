@@ -4,6 +4,7 @@ from app.models.user import User, UserRole
 from app.models.tenant import Tenant
 from app.models.user_tenant_role import UserTenantRole
 from app.models.poc import POC, POCParticipant
+from app.models.poc_public_link import POCPublicLink
 from app.models.task import (
     Task,
     TaskGroup,
@@ -38,6 +39,7 @@ __all__ = [
     "UserTenantRole",
     "POC",
     "POCParticipant",
+    "POCPublicLink",
     "Task",
     "TaskGroup",
     "POCTask",

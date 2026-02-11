@@ -293,6 +293,16 @@ GET /users/?skip=0&limit=100
 Authorization: Bearer {token}
 ```
 
+## Public Share Links
+
+For detailed Public Share Links API documentation, see [PUBLIC_LINKS_API.md](./PUBLIC_LINKS_API.md).
+
+Quick reference:
+- **Create Link**: `POST /pocs/{poc_id}/public-link` (Tenant Admin)
+- **Get Link**: `GET /pocs/{poc_id}/public-link` (Tenant Admin)
+- **Delete Link**: `DELETE /pocs/{poc_id}/public-link` (Tenant Admin)
+- **Access Link**: `GET /public/pocs/{access_token}` (No auth)
+
 ---
 
 For interactive API documentation, visit: http://localhost:8000/docs

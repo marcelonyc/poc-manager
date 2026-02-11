@@ -11,6 +11,7 @@ import DemoConversionApproval from './pages/DemoConversionApproval'
 import Dashboard from './pages/Dashboard'
 import POCList from './pages/POCList'
 import POCDetail from './pages/POCDetail'
+import PublicPOCAccess from './pages/PublicPOCAccess'
 import TaskTemplates from './pages/TaskTemplates'
 import TenantSettings from './pages/TenantSettings'
 import Tenants from './pages/Tenants'
@@ -46,6 +47,7 @@ function App() {
                 <Route path="accept-invitation" element={<AcceptInvitation />} />
                 <Route path="tenant-invitation" element={<AcceptTenantInvitation />} />
                 <Route path="poc-invitation" element={<AcceptPOCInvitation />} />
+                <Route path="share/:token" element={<PublicPOCAccess />} />
 
                 {isAuthenticated ? (
                     <Route path="/" element={<Layout />}>

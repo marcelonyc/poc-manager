@@ -1,4 +1,5 @@
 """Main FastAPI application"""
+
 import logging
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -6,24 +7,25 @@ from fastapi.staticfiles import StaticFiles
 from pathlib import Path
 from app.config import settings
 from app.routers import (
-    auth, 
-    tenants, 
-    users, 
-    pocs, 
-    tasks, 
-    poc_components, 
-    invitations, 
-    products, 
-    poc_invitations, 
-    password_reset, 
+    auth,
+    tenants,
+    users,
+    pocs,
+    tasks,
+    poc_components,
+    invitations,
+    products,
+    poc_invitations,
+    password_reset,
     demo_request,
-    tenant_invitations
+    tenant_invitations,
+    public_pocs,
 )
 
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
 )
 logger = logging.getLogger(__name__)
 
@@ -52,6 +54,7 @@ app.include_router(auth.router)
 app.include_router(tenants.router)
 app.include_router(users.router)
 app.include_router(pocs.router)
+app.include_router(public_pocs.router)
 app.include_router(tasks.router)
 app.include_router(poc_components.router)
 app.include_router(invitations.router)

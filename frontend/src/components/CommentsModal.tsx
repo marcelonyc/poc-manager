@@ -24,10 +24,12 @@ interface CommentsModalProps {
     pocId: number
     taskId?: number
     taskGroupId?: number
+    isPublicAccess?: boolean
+    publicPocData?: any
     onClose: () => void
 }
 
-export default function CommentsModal({ pocId, taskId, taskGroupId, onClose }: CommentsModalProps) {
+export default function CommentsModal({ pocId, taskId, taskGroupId, isPublicAccess = false, publicPocData, onClose }: CommentsModalProps) {
     const [comments, setComments] = useState<Comment[]>([])
     const [loading, setLoading] = useState(true)
     const [showNewCommentForm, setShowNewCommentForm] = useState(false)
@@ -35,19 +37,34 @@ export default function CommentsModal({ pocId, taskId, taskGroupId, onClose }: C
     const [newComment, setNewComment] = useState({
         subject: '',
         content: '',
-        is_internal: false
+        is_internal: false,
+        guest_name: publicPocData?.customer_company_name || '',
+        guest_email: ''
     })
 
     const subjects = Array.from(new Set(comments.map(c => c.subject)))
 
     useEffect(() => {
+        // Validate that either taskId or taskGroupId is provided
+        if (!taskId && !taskGroupId) {
+            console.error('CommentsModal requires either taskId or taskGroupId')
+            return
+        }
         fetchComments()
     }, [pocId, taskId, taskGroupId])
 
     const fetchComments = async () => {
         try {
+            // Validate that either taskId or taskGroupId is provided
+            if (!taskId && !taskGroupId) {
+                setLoading(false)
+                return
+            }
+
             setLoading(true)
-            let url = `/pocs/${pocId}/comments?`
+            let url = isPublicAccess
+                ? `/public/pocs/${publicPocData?.access_token || ''}/comments?`
+                : `/pocs/${pocId}/comments?`
             if (taskId) url += `task_id=${taskId}`
             if (taskGroupId) url += `task_group_id=${taskGroupId}`
 
@@ -61,8 +78,19 @@ export default function CommentsModal({ pocId, taskId, taskGroupId, onClose }: C
     }
 
     const handleCreateComment = async () => {
+        // Validate that either taskId or taskGroupId is provided
+        if (!taskId && !taskGroupId) {
+            toast.error('Comment must be associated with either a task or task group')
+            return
+        }
+
         if (!newComment.subject.trim() || !newComment.content.trim()) {
             toast.error('Subject and content are required')
+            return
+        }
+
+        if (isPublicAccess && (!newComment.guest_name.trim() || !newComment.guest_email.trim())) {
+            toast.error('Name and email are required')
             return
         }
 
@@ -74,13 +102,33 @@ export default function CommentsModal({ pocId, taskId, taskGroupId, onClose }: C
         try {
             const commentData = {
                 ...newComment,
-                poc_task_id: taskId,
-                poc_task_group_id: taskGroupId
+                poc_task_id: taskId || undefined,
+                poc_task_group_id: taskGroupId || undefined
             }
 
-            await api.post(`/pocs/${pocId}/comments`, commentData)
+            let url = ''
+            if (isPublicAccess) {
+                // Remove is_internal and undefined fields for public comments
+                delete commentData.is_internal
+                url = `/public/pocs/${publicPocData?.access_token}/comments`
+                if (taskId) url += `?poc_task_id=${taskId}`
+                else if (taskGroupId) url += `?poc_task_group_id=${taskGroupId}`
+                await api.post(url, commentData)
+            } else {
+                url = `/pocs/${pocId}/comments`
+                if (taskId) url += `?task_id=${taskId}`
+                else if (taskGroupId) url += `?task_group_id=${taskGroupId}`
+                await api.post(url, commentData)
+            }
+
             toast.success('Comment added')
-            setNewComment({ subject: '', content: '', is_internal: false })
+            setNewComment({
+                subject: '',
+                content: '',
+                is_internal: false,
+                guest_name: publicPocData?.customer_company_name || '',
+                guest_email: ''
+            })
             setShowNewCommentForm(false)
             setReplyToSubject(null)
             fetchComments()
@@ -134,7 +182,13 @@ export default function CommentsModal({ pocId, taskId, taskGroupId, onClose }: C
                                     onClick={() => {
                                         setShowNewCommentForm(true)
                                         setReplyToSubject(null)
-                                        setNewComment({ subject: '', content: '', is_internal: false })
+                                        setNewComment({
+                                            subject: '',
+                                            content: '',
+                                            is_internal: false,
+                                            guest_name: publicPocData?.customer_company_name || '',
+                                            guest_email: ''
+                                        })
                                     }}
                                     className="mb-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
                                 >
@@ -164,6 +218,36 @@ export default function CommentsModal({ pocId, taskId, taskGroupId, onClose }: C
                                         </div>
                                     )}
 
+                                    {isPublicAccess && (
+                                        <>
+                                            <div className="mb-3">
+                                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                                    Your Name *
+                                                </label>
+                                                <input
+                                                    type="text"
+                                                    value={newComment.guest_name}
+                                                    onChange={(e) => setNewComment({ ...newComment, guest_name: e.target.value })}
+                                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                                                    placeholder="Your name"
+                                                />
+                                            </div>
+
+                                            <div className="mb-3">
+                                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                                    Your Email *
+                                                </label>
+                                                <input
+                                                    type="email"
+                                                    value={newComment.guest_email}
+                                                    onChange={(e) => setNewComment({ ...newComment, guest_email: e.target.value })}
+                                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                                                    placeholder="your.email@example.com"
+                                                />
+                                            </div>
+                                        </>
+                                    )}
+
                                     <div className="mb-3">
                                         <label className="block text-sm font-medium text-gray-700 mb-1">
                                             Content * (max 1000 characters)
@@ -180,19 +264,21 @@ export default function CommentsModal({ pocId, taskId, taskGroupId, onClose }: C
                                         </div>
                                     </div>
 
-                                    <div className="mb-3">
-                                        <label className="flex items-center">
-                                            <input
-                                                type="checkbox"
-                                                checked={newComment.is_internal}
-                                                onChange={(e) => setNewComment({ ...newComment, is_internal: e.target.checked })}
-                                                className="h-4 w-4 text-blue-600 rounded"
-                                            />
-                                            <span className="ml-2 text-sm text-gray-900">
-                                                Internal comment (not visible to customers)
-                                            </span>
-                                        </label>
-                                    </div>
+                                    {!isPublicAccess && (
+                                        <div className="mb-3">
+                                            <label className="flex items-center">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={newComment.is_internal}
+                                                    onChange={(e) => setNewComment({ ...newComment, is_internal: e.target.checked })}
+                                                    className="h-4 w-4 text-blue-600 rounded"
+                                                />
+                                                <span className="ml-2 text-sm text-gray-900">
+                                                    Internal comment (not visible to customers)
+                                                </span>
+                                            </label>
+                                        </div>
+                                    )}
 
                                     <div className="flex gap-2">
                                         <button
@@ -205,7 +291,13 @@ export default function CommentsModal({ pocId, taskId, taskGroupId, onClose }: C
                                             onClick={() => {
                                                 setShowNewCommentForm(false)
                                                 setReplyToSubject(null)
-                                                setNewComment({ subject: '', content: '', is_internal: false })
+                                                setNewComment({
+                                                    subject: '',
+                                                    content: '',
+                                                    is_internal: false,
+                                                    guest_name: publicPocData?.customer_company_name || '',
+                                                    guest_email: ''
+                                                })
                                             }}
                                             className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
                                         >
