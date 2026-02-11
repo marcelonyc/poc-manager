@@ -99,6 +99,7 @@ class POCTaskUpdate(BaseModel):
     status: Optional[TaskStatus] = None
     success_level: Optional[int] = None
     sort_order: Optional[int] = None
+    success_criteria_ids: Optional[List[int]] = None
 
 
 class POCTaskAssignee(BaseModel):
@@ -131,6 +132,7 @@ class POCTask(POCTaskBase):
     created_at: datetime
     completed_at: Optional[datetime]
     assignees: List[POCTaskAssignee] = []
+    success_criteria_ids: List[int] = []
 
     model_config = ConfigDict(from_attributes=True, use_enum_values=True)
 
@@ -170,5 +172,7 @@ class POCTaskGroup(POCTaskGroupBase):
     success_level: Optional[int]
     created_at: datetime
     completed_at: Optional[datetime]
+    success_criteria_ids: List[int] = []
+    tasks: List[POCTask] = []
 
     model_config = ConfigDict(from_attributes=True, use_enum_values=True)

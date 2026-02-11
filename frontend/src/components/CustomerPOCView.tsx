@@ -16,6 +16,7 @@ interface POCTask {
     title: string
     description: string | null
     status?: string
+    success_criteria_ids?: number[]
     assignees?: TaskAssignee[]
 }
 
@@ -45,6 +46,11 @@ export default function CustomerPOCView({ pocId }: CustomerPOCViewProps) {
     const [commentsModalTaskGroupId, setCommentsModalTaskGroupId] = useState<number | undefined>()
     const [showDocumentModal, setShowDocumentModal] = useState(false)
     const [generatingDocument, setGeneratingDocument] = useState(false)
+
+    // Criteria Task List Modal
+    const [showCriteriaTaskListModal, setShowCriteriaTaskListModal] = useState(false)
+    const [criteriaTaskListTitle, setCriteriaTaskListTitle] = useState('')
+    const [criteriaTaskListNames, setCriteriaTaskListNames] = useState<string[]>([])
 
     useEffect(() => {
         fetchPOCData()
@@ -88,6 +94,9 @@ export default function CustomerPOCView({ pocId }: CustomerPOCViewProps) {
             case 'completed': return 'bg-green-100 text-green-800'
             case 'in_progress': return 'bg-blue-100 text-blue-800'
             case 'blocked': return 'bg-red-100 text-red-800'
+            case 'satisfied': return 'bg-emerald-100 text-emerald-800'
+            case 'partially_satisfied': return 'bg-yellow-100 text-yellow-800'
+            case 'not_satisfied': return 'bg-orange-100 text-orange-800'
             default: return 'bg-gray-100 text-gray-800'
         }
     }
@@ -151,6 +160,9 @@ export default function CustomerPOCView({ pocId }: CustomerPOCViewProps) {
             case 'in_progress': return 'In Progress'
             case 'completed': return 'Completed'
             case 'blocked': return 'Blocked'
+            case 'satisfied': return 'Satisfied'
+            case 'partially_satisfied': return 'Partially Satisfied'
+            case 'not_satisfied': return 'Not Satisfied'
             default: return 'Not Started'
         }
     }
@@ -295,6 +307,123 @@ export default function CustomerPOCView({ pocId }: CustomerPOCViewProps) {
                                 </div>
                             </div>
                         </div>
+
+                        {/* Success Criteria Task Status Table */}
+                        {successCriteria.length > 0 && (
+                            <div className="bg-white border border-gray-200 rounded-lg p-6">
+                                <h3 className="text-lg font-semibold text-gray-900 mb-4">Success Criteria Task Status</h3>
+                                <div className="overflow-x-auto">
+                                    <table className="min-w-full divide-y divide-gray-200">
+                                        <thead className="bg-gray-50">
+                                            <tr>
+                                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                    Criteria
+                                                </th>
+                                                <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                    Not Started
+                                                </th>
+                                                <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                    In Progress
+                                                </th>
+                                                <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                    Completed
+                                                </th>
+                                                <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                    Blocked
+                                                </th>
+                                                <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                    Satisfied
+                                                </th>
+                                                <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                    Partially Satisfied
+                                                </th>
+                                                <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                    Not Satisfied
+                                                </th>
+                                                <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                    Total
+                                                </th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="bg-white divide-y divide-gray-200">
+                                            {successCriteria.map((criteria: any) => {
+                                                const allTasks: POCTask[] = [
+                                                    ...pocTasks,
+                                                    ...pocTaskGroups.flatMap(group => group.tasks || [])
+                                                ]
+
+                                                const relatedTasks = allTasks.filter(task => {
+                                                    if (!task.success_criteria_ids || !Array.isArray(task.success_criteria_ids)) {
+                                                        return false
+                                                    }
+                                                    return task.success_criteria_ids.some(id =>
+                                                        id == criteria.id || String(id) === String(criteria.id)
+                                                    )
+                                                })
+
+                                                const notStarted = relatedTasks.filter(t => t.status === 'not_started' || !t.status).length
+                                                const inProgress = relatedTasks.filter(t => t.status === 'in_progress').length
+                                                const completed = relatedTasks.filter(t => t.status === 'completed').length
+                                                const blocked = relatedTasks.filter(t => t.status === 'blocked').length
+                                                const satisfied = relatedTasks.filter(t => t.status === 'satisfied').length
+                                                const partiallySatisfied = relatedTasks.filter(t => t.status === 'partially_satisfied').length
+                                                const notSatisfied = relatedTasks.filter(t => t.status === 'not_satisfied').length
+                                                const total = relatedTasks.length
+
+                                                return (
+                                                    <tr key={criteria.id} className="hover:bg-gray-50">
+                                                        <td className="px-4 py-3 text-sm font-medium text-gray-900">
+                                                            {criteria.title}
+                                                        </td>
+                                                        {[
+                                                            { count: notStarted, status: 'not_started', label: 'Not Started', activeColor: 'gray-900' },
+                                                            { count: inProgress, status: 'in_progress', label: 'In Progress', activeColor: 'blue-600' },
+                                                            { count: completed, status: 'completed', label: 'Completed', activeColor: 'green-600' },
+                                                            { count: blocked, status: 'blocked', label: 'Blocked', activeColor: 'red-600' },
+                                                            { count: satisfied, status: 'satisfied', label: 'Satisfied', activeColor: 'emerald-600' },
+                                                            { count: partiallySatisfied, status: 'partially_satisfied', label: 'Partially Satisfied', activeColor: 'yellow-600' },
+                                                            { count: notSatisfied, status: 'not_satisfied', label: 'Not Satisfied', activeColor: 'orange-600' },
+                                                        ].map(({ count, status, label, activeColor }) => (
+                                                            <td key={status} className="px-3 py-3 text-center text-sm">
+                                                                <button
+                                                                    className={`${count > 0 ? `font-semibold text-${activeColor} hover:underline cursor-pointer` : 'text-gray-400 cursor-default'}`}
+                                                                    disabled={count === 0}
+                                                                    onClick={() => {
+                                                                        if (count > 0) {
+                                                                            const names = relatedTasks.filter(t => status === 'not_started' ? (t.status === 'not_started' || !t.status) : t.status === status).map(t => t.title)
+                                                                            setCriteriaTaskListTitle(`${criteria.title} — ${label}`)
+                                                                            setCriteriaTaskListNames(names)
+                                                                            setShowCriteriaTaskListModal(true)
+                                                                        }
+                                                                    }}
+                                                                >
+                                                                    {count}
+                                                                </button>
+                                                            </td>
+                                                        ))}
+                                                        <td className="px-3 py-3 text-center text-sm">
+                                                            <button
+                                                                className={`${total > 0 ? 'font-semibold text-gray-900 hover:underline cursor-pointer' : 'font-semibold text-gray-900 cursor-default'}`}
+                                                                disabled={total === 0}
+                                                                onClick={() => {
+                                                                    if (total > 0) {
+                                                                        setCriteriaTaskListTitle(`${criteria.title} — All Tasks`)
+                                                                        setCriteriaTaskListNames(relatedTasks.map(t => t.title))
+                                                                        setShowCriteriaTaskListModal(true)
+                                                                    }
+                                                                }}
+                                                            >
+                                                                {total}
+                                                            </button>
+                                                        </td>
+                                                    </tr>
+                                                )
+                                            })}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        )}
                     </div>
                 )}
 
@@ -614,6 +743,31 @@ export default function CustomerPOCView({ pocId }: CustomerPOCViewProps) {
                                 className="px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                                 Cancel
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Criteria Task List Modal */}
+            {showCriteriaTaskListModal && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                    <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4 max-h-[70vh] flex flex-col">
+                        <h3 className="text-lg font-semibold text-gray-900 mb-4">{criteriaTaskListTitle}</h3>
+                        <ul className="space-y-2 overflow-y-auto flex-1 mb-4">
+                            {criteriaTaskListNames.map((name, idx) => (
+                                <li key={idx} className="flex items-center gap-2 text-sm text-gray-800">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-gray-400 flex-shrink-0" />
+                                    {name}
+                                </li>
+                            ))}
+                        </ul>
+                        <div className="flex justify-end">
+                            <button
+                                onClick={() => setShowCriteriaTaskListModal(false)}
+                                className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 text-sm"
+                            >
+                                Close
                             </button>
                         </div>
                     </div>

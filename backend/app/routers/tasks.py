@@ -405,6 +405,16 @@ def list_poc_tasks(
             for a in assignees
         ]
 
+        # Get success criteria IDs for this task
+        criteria_links = (
+            db.query(TaskSuccessCriteria)
+            .filter(TaskSuccessCriteria.poc_task_id == task.id)
+            .all()
+        )
+        task_dict["success_criteria_ids"] = [
+            link.success_criteria_id for link in criteria_links
+        ]
+
         result.append(task_dict)
 
     return result
@@ -430,6 +440,23 @@ def update_poc_task(
         )
 
     update_data = task_data.dict(exclude_unset=True)
+
+    # Handle success_criteria_ids separately (junction table)
+    if "success_criteria_ids" in update_data:
+        criteria_ids = update_data.pop("success_criteria_ids")
+        # Remove existing links
+        db.query(TaskSuccessCriteria).filter(
+            TaskSuccessCriteria.poc_task_id == task_id
+        ).delete()
+        # Add new links
+        if criteria_ids:
+            for criteria_id in criteria_ids:
+                link = TaskSuccessCriteria(
+                    success_criteria_id=criteria_id,
+                    poc_task_id=task_id,
+                )
+                db.add(link)
+
     for field, value in update_data.items():
         setattr(poc_task, field, value)
 
@@ -692,7 +719,75 @@ def list_poc_task_groups(
         .order_by(POCTaskGroup.sort_order)
         .all()
     )
-    return groups
+
+    result = []
+    for group in groups:
+        group_dict = POCTaskGroupSchema.model_validate(group).model_dump()
+
+        # Get success criteria IDs for this group
+        criteria_links = (
+            db.query(TaskSuccessCriteria)
+            .filter(TaskSuccessCriteria.poc_task_group_id == group.id)
+            .all()
+        )
+        group_dict["success_criteria_ids"] = [
+            link.success_criteria_id for link in criteria_links
+        ]
+
+        # Get tasks for this group (if it has a template)
+        group_tasks = []
+        if group.task_group_id:
+            task_group = (
+                db.query(TaskGroup)
+                .filter(TaskGroup.id == group.task_group_id)
+                .first()
+            )
+            if task_group and task_group.tasks:
+                template_task_ids = [t.id for t in task_group.tasks]
+                poc_tasks = (
+                    db.query(POCTask)
+                    .filter(
+                        POCTask.poc_id == poc_id,
+                        POCTask.task_id.in_(template_task_ids),
+                    )
+                    .order_by(POCTask.sort_order)
+                    .all()
+                )
+                for task in poc_tasks:
+                    task_dict = POCTaskSchema.model_validate(task).model_dump()
+                    # Get assignees
+                    assignees = (
+                        db.query(POCTaskAssignee)
+                        .filter(POCTaskAssignee.poc_task_id == task.id)
+                        .all()
+                    )
+                    task_dict["assignees"] = [
+                        POCTaskAssigneeSchema(
+                            id=a.id,
+                            participant_id=a.participant_id,
+                            participant_name=a.participant.user.full_name
+                            or a.participant.user.email,
+                            participant_email=a.participant.user.email,
+                            assigned_at=a.assigned_at,
+                        ).model_dump()
+                        for a in assignees
+                    ]
+                    # Get success criteria IDs for this task
+                    task_criteria_links = (
+                        db.query(TaskSuccessCriteria)
+                        .filter(TaskSuccessCriteria.poc_task_id == task.id)
+                        .all()
+                    )
+                    task_dict["success_criteria_ids"] = [
+                        link.success_criteria_id
+                        for link in task_criteria_links
+                    ]
+                    group_tasks.append(task_dict)
+
+        group_dict["tasks"] = group_tasks
+        result.append(group_dict)
+
+    return result
 
 
 @router.put(
@@ -809,6 +904,16 @@ def get_poc_task_group_tasks(
                         assigned_at=a.assigned_at,
                     ).model_dump()
                     for a in assignees
+                ]
+
+                # Get success criteria IDs for this task
+                criteria_links = (
+                    db.query(TaskSuccessCriteria)
+                    .filter(TaskSuccessCriteria.poc_task_id == task.id)
+                    .all()
+                )
+                task_dict["success_criteria_ids"] = [
+                    link.success_criteria_id for link in criteria_links
                 ]
 
                 result.append(task_dict)

@@ -171,6 +171,21 @@ export default function POCForm({ pocId, initialData, onClose }: POCFormProps) {
     const [showAssignmentModal, setShowAssignmentModal] = useState(false)
     const [assignmentModalTask, setAssignmentModalTask] = useState<POCTask | null>(null)
 
+    // Status Comment Modal (for Partially Satisfied / Not Satisfied)
+    const [showStatusCommentModal, setShowStatusCommentModal] = useState(false)
+    const [statusCommentText, setStatusCommentText] = useState('')
+    const [pendingStatusChange, setPendingStatusChange] = useState<{ type: 'task' | 'taskGroup'; id: number; status: string } | null>(null)
+
+    // Criteria Edit Modal
+    const [showCriteriaEditModal, setShowCriteriaEditModal] = useState(false)
+    const [criteriaEditTaskId, setCriteriaEditTaskId] = useState<number | null>(null)
+    const [criteriaEditSelectedIds, setCriteriaEditSelectedIds] = useState<number[]>([])
+
+    // Criteria Task List Modal
+    const [showCriteriaTaskListModal, setShowCriteriaTaskListModal] = useState(false)
+    const [criteriaTaskListTitle, setCriteriaTaskListTitle] = useState('')
+    const [criteriaTaskListNames, setCriteriaTaskListNames] = useState<string[]>([])
+
     // Helper function to format API errors
     const formatErrorMessage = (error: any, defaultMessage: string): string => {
         if (!error.response?.data) return defaultMessage
@@ -248,13 +263,11 @@ export default function POCForm({ pocId, initialData, onClose }: POCFormProps) {
     const fetchPOCData = async () => {
         if (!pocId) return
         try {
-            const [pocResponse, criteriaResponse, participantsResponse, resourcesResponse, tasksResponse, taskGroupsResponse] = await Promise.all([
+            const [pocResponse, criteriaResponse, participantsResponse, resourcesResponse] = await Promise.all([
                 api.get(`/pocs/${pocId}`),
                 api.get(`/pocs/${pocId}/success-criteria`),
                 api.get(`/pocs/${pocId}/participants`),
                 api.get(`/pocs/${pocId}/resources`),
-                api.get(`/tasks/pocs/${pocId}/tasks`),
-                api.get(`/tasks/pocs/${pocId}/task-groups`)
             ])
 
             const poc = pocResponse.data
@@ -272,12 +285,27 @@ export default function POCForm({ pocId, initialData, onClose }: POCFormProps) {
             setSuccessCriteria(criteriaResponse.data || [])
             setParticipants(participantsResponse.data || [])
             setResources(resourcesResponse.data || [])
-            const tasks = tasksResponse.data || []
-            const taskGroups = taskGroupsResponse.data || []
-            console.log('Tasks loaded:', tasks)
-            console.log('Task Groups loaded:', taskGroups)
-            setPocTasks(tasks)
-            setPocTaskGroups(taskGroups)
+
+            // Fetch tasks and task groups separately to avoid breaking the entire load
+            try {
+                const tasksResponse = await api.get(`/tasks/pocs/${pocId}/tasks`)
+                const tasks = tasksResponse.data || []
+                console.log('Tasks loaded:', tasks)
+                setPocTasks(tasks)
+            } catch (taskError: any) {
+                console.error('Failed to fetch tasks:', taskError)
+                setPocTasks([])
+            }
+
+            try {
+                const taskGroupsResponse = await api.get(`/tasks/pocs/${pocId}/task-groups`)
+                const taskGroups = taskGroupsResponse.data || []
+                console.log('Task Groups loaded:', taskGroups)
+                setPocTaskGroups(taskGroups)
+            } catch (groupError: any) {
+                console.error('Failed to fetch task groups:', groupError)
+                setPocTaskGroups([])
+            }
         } catch (error: any) {
             toast.error('Failed to fetch POC data')
         }
@@ -472,6 +500,20 @@ export default function POCForm({ pocId, initialData, onClose }: POCFormProps) {
     const handleUpdateTaskStatus = async (taskId: number, newStatus: string) => {
         if (!pocId) return
 
+        // If status requires a mandatory comment, show the modal
+        if (newStatus === 'partially_satisfied' || newStatus === 'not_satisfied') {
+            setPendingStatusChange({ type: 'task', id: taskId, status: newStatus })
+            setStatusCommentText('')
+            setShowStatusCommentModal(true)
+            return
+        }
+
+        await applyTaskStatusChange(taskId, newStatus)
+    }
+
+    const applyTaskStatusChange = async (taskId: number, newStatus: string) => {
+        if (!pocId) return
+
         try {
             await api.put(`/tasks/pocs/${pocId}/tasks/${taskId}`, { status: newStatus })
 
@@ -512,7 +554,55 @@ export default function POCForm({ pocId, initialData, onClose }: POCFormProps) {
         }
     }
 
+    const handleOpenCriteriaEdit = (task: POCTask) => {
+        setCriteriaEditTaskId(task.id!)
+        setCriteriaEditSelectedIds(task.success_criteria_ids || [])
+        setShowCriteriaEditModal(true)
+    }
+
+    const handleSaveCriteriaEdit = async () => {
+        if (!pocId || !criteriaEditTaskId) return
+        try {
+            await api.put(`/tasks/pocs/${pocId}/tasks/${criteriaEditTaskId}`, {
+                success_criteria_ids: criteriaEditSelectedIds
+            })
+            setPocTasks(pocTasks.map(t =>
+                t.id === criteriaEditTaskId
+                    ? { ...t, success_criteria_ids: criteriaEditSelectedIds }
+                    : t
+            ))
+            // Also update tasks inside groups
+            setPocTaskGroups(pocTaskGroups.map(g => ({
+                ...g,
+                tasks: g.tasks?.map(t =>
+                    t.id === criteriaEditTaskId
+                        ? { ...t, success_criteria_ids: criteriaEditSelectedIds }
+                        : t
+                )
+            })))
+            setShowCriteriaEditModal(false)
+            setCriteriaEditTaskId(null)
+            toast.success('Success criteria updated')
+        } catch (error: any) {
+            toast.error(formatErrorMessage(error, 'Failed to update criteria'))
+        }
+    }
+
     const handleUpdateTaskGroupStatus = async (groupId: number, newStatus: string) => {
+        if (!pocId) return
+
+        // If status requires a mandatory comment, show the modal
+        if (newStatus === 'partially_satisfied' || newStatus === 'not_satisfied') {
+            setPendingStatusChange({ type: 'taskGroup', id: groupId, status: newStatus })
+            setStatusCommentText('')
+            setShowStatusCommentModal(true)
+            return
+        }
+
+        await applyTaskGroupStatusChange(groupId, newStatus)
+    }
+
+    const applyTaskGroupStatusChange = async (groupId: number, newStatus: string) => {
         if (!pocId) return
 
         try {
@@ -520,6 +610,35 @@ export default function POCForm({ pocId, initialData, onClose }: POCFormProps) {
             setPocTaskGroups(pocTaskGroups.map(g => g.id === groupId ? { ...g, status: newStatus } : g))
         } catch (error: any) {
             alert(formatErrorMessage(error))
+        }
+    }
+
+    const handleStatusCommentSubmit = async () => {
+        if (!pocId || !pendingStatusChange || !statusCommentText.trim()) return
+
+        try {
+            const statusLabel = pendingStatusChange.status === 'partially_satisfied' ? 'Partially Satisfied' : 'Not Satisfied'
+            const commentPayload: any = {
+                subject: `Status changed to ${statusLabel}`,
+                content: statusCommentText.trim(),
+                is_internal: false,
+            }
+
+            if (pendingStatusChange.type === 'task') {
+                commentPayload.poc_task_id = pendingStatusChange.id
+                await applyTaskStatusChange(pendingStatusChange.id, pendingStatusChange.status)
+            } else {
+                commentPayload.poc_task_group_id = pendingStatusChange.id
+                await applyTaskGroupStatusChange(pendingStatusChange.id, pendingStatusChange.status)
+            }
+
+            await api.post(`/pocs/${pocId}/comments`, commentPayload)
+
+            setShowStatusCommentModal(false)
+            setPendingStatusChange(null)
+            setStatusCommentText('')
+        } catch (error: any) {
+            toast.error(formatErrorMessage(error, 'Failed to update status'))
         }
     }
 
@@ -819,7 +938,10 @@ export default function POCForm({ pocId, initialData, onClose }: POCFormProps) {
                                         { status: 'not_started', label: 'Not Started', color: 'gray' },
                                         { status: 'in_progress', label: 'In Progress', color: 'blue' },
                                         { status: 'completed', label: 'Completed', color: 'green' },
-                                        { status: 'blocked', label: 'Blocked', color: 'red' }
+                                        { status: 'blocked', label: 'Blocked', color: 'red' },
+                                        { status: 'satisfied', label: 'Satisfied', color: 'emerald' },
+                                        { status: 'partially_satisfied', label: 'Partially Satisfied', color: 'yellow' },
+                                        { status: 'not_satisfied', label: 'Not Satisfied', color: 'orange' }
                                     ].map(({ status, label, color }) => {
                                         const count = pocTasks.filter(t => t.status === status).length
                                         const percentage = pocTasks.length > 0 ? (count / pocTasks.length * 100).toFixed(0) : 0
@@ -849,7 +971,10 @@ export default function POCForm({ pocId, initialData, onClose }: POCFormProps) {
                                         { status: 'not_started', label: 'Not Started', color: 'gray' },
                                         { status: 'in_progress', label: 'In Progress', color: 'blue' },
                                         { status: 'completed', label: 'Completed', color: 'green' },
-                                        { status: 'blocked', label: 'Blocked', color: 'red' }
+                                        { status: 'blocked', label: 'Blocked', color: 'red' },
+                                        { status: 'satisfied', label: 'Satisfied', color: 'emerald' },
+                                        { status: 'partially_satisfied', label: 'Partially Satisfied', color: 'yellow' },
+                                        { status: 'not_satisfied', label: 'Not Satisfied', color: 'orange' }
                                     ].map(({ status, label, color }) => {
                                         const count = pocTaskGroups.filter(g => g.status === status).length
                                         const percentage = pocTaskGroups.length > 0 ? (count / pocTaskGroups.length * 100).toFixed(0) : 0
@@ -871,6 +996,141 @@ export default function POCForm({ pocId, initialData, onClose }: POCFormProps) {
                                 </div>
                             </div>
                         </div>
+
+                        {/* Success Criteria Status Table */}
+                        {successCriteria.length > 0 && (
+                            <div className="bg-white border border-gray-200 rounded-lg p-6">
+                                <h3 className="text-lg font-semibold text-gray-900 mb-4">Success Criteria Task Status</h3>
+                                <div className="overflow-x-auto">
+                                    <table className="min-w-full divide-y divide-gray-200">
+                                        <thead className="bg-gray-50">
+                                            <tr>
+                                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                    Criteria
+                                                </th>
+                                                <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                    Not Started
+                                                </th>
+                                                <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                    In Progress
+                                                </th>
+                                                <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                    Completed
+                                                </th>
+                                                <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                    Blocked
+                                                </th>
+                                                <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                    Satisfied
+                                                </th>
+                                                <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                    Partially Satisfied
+                                                </th>
+                                                <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                    Not Satisfied
+                                                </th>
+                                                <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                    Total
+                                                </th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="bg-white divide-y divide-gray-200">
+                                            {successCriteria.map((criteria) => {
+                                                // Get all tasks from both standalone tasks and tasks within groups
+                                                const allTasks: POCTask[] = [
+                                                    ...pocTasks,
+                                                    ...pocTaskGroups.flatMap(group => group.tasks || [])
+                                                ]
+
+                                                // Get all tasks associated with this criteria
+                                                // Handle both number and string comparisons
+                                                const relatedTasks = allTasks.filter(task => {
+                                                    if (!task.success_criteria_ids || !Array.isArray(task.success_criteria_ids)) {
+                                                        return false
+                                                    }
+                                                    return task.success_criteria_ids.some(id =>
+                                                        id == criteria.id || String(id) === String(criteria.id)
+                                                    )
+                                                })
+
+                                                // Count tasks by status
+                                                const notStarted = relatedTasks.filter(t => t.status === 'not_started' || !t.status).length
+                                                const inProgress = relatedTasks.filter(t => t.status === 'in_progress').length
+                                                const completed = relatedTasks.filter(t => t.status === 'completed').length
+                                                const blocked = relatedTasks.filter(t => t.status === 'blocked').length
+                                                const satisfied = relatedTasks.filter(t => t.status === 'satisfied').length
+                                                const partiallySatisfied = relatedTasks.filter(t => t.status === 'partially_satisfied').length
+                                                const notSatisfied = relatedTasks.filter(t => t.status === 'not_satisfied').length
+                                                const total = relatedTasks.length
+
+                                                return (
+                                                    <tr key={criteria.id} className="hover:bg-gray-50">
+                                                        <td className="px-4 py-3 text-sm font-medium text-gray-900">
+                                                            <div className="flex items-center gap-2">
+                                                                <div
+                                                                    className="w-2 h-2 rounded-full"
+                                                                    style={{
+                                                                        backgroundColor:
+                                                                            criteria.importance_level >= 4 ? '#ef4444' :
+                                                                                criteria.importance_level >= 3 ? '#f59e0b' :
+                                                                                    '#10b981'
+                                                                    }}
+                                                                />
+                                                                {criteria.title}
+                                                            </div>
+                                                        </td>
+                                                        {[
+                                                            { count: notStarted, status: 'not_started', label: 'Not Started', color: 'gray-900', activeColor: 'gray-900' },
+                                                            { count: inProgress, status: 'in_progress', label: 'In Progress', color: 'gray-400', activeColor: 'blue-600' },
+                                                            { count: completed, status: 'completed', label: 'Completed', color: 'gray-400', activeColor: 'green-600' },
+                                                            { count: blocked, status: 'blocked', label: 'Blocked', color: 'gray-400', activeColor: 'red-600' },
+                                                            { count: satisfied, status: 'satisfied', label: 'Satisfied', color: 'gray-400', activeColor: 'emerald-600' },
+                                                            { count: partiallySatisfied, status: 'partially_satisfied', label: 'Partially Satisfied', color: 'gray-400', activeColor: 'yellow-600' },
+                                                            { count: notSatisfied, status: 'not_satisfied', label: 'Not Satisfied', color: 'gray-400', activeColor: 'orange-600' },
+                                                        ].map(({ count, status, label, color, activeColor }) => (
+                                                            <td key={status} className="px-3 py-3 text-center text-sm text-gray-700">
+                                                                <button
+                                                                    className={`${count > 0 ? `font-semibold text-${activeColor} hover:underline cursor-pointer` : 'text-gray-400 cursor-default'}`}
+                                                                    disabled={count === 0}
+                                                                    onClick={() => {
+                                                                        if (count > 0) {
+                                                                            const names = relatedTasks.filter(t => status === 'not_started' ? (t.status === 'not_started' || !t.status) : t.status === status).map(t => t.title)
+                                                                            setCriteriaTaskListTitle(`${criteria.title} — ${label}`)
+                                                                            setCriteriaTaskListNames(names)
+                                                                            setShowCriteriaTaskListModal(true)
+                                                                        }
+                                                                    }}
+                                                                >
+                                                                    {count}
+                                                                </button>
+                                                            </td>
+                                                        ))}
+                                                        <td className="px-3 py-3 text-center text-sm text-gray-700">
+                                                            <button
+                                                                className={`${total > 0 ? 'font-semibold text-gray-900 hover:underline cursor-pointer' : 'font-semibold text-gray-900 cursor-default'}`}
+                                                                disabled={total === 0}
+                                                                onClick={() => {
+                                                                    if (total > 0) {
+                                                                        setCriteriaTaskListTitle(`${criteria.title} — All Tasks`)
+                                                                        setCriteriaTaskListNames(relatedTasks.map(t => t.title))
+                                                                        setShowCriteriaTaskListModal(true)
+                                                                    }
+                                                                }}
+                                                            >
+                                                                {total}
+                                                            </button>
+                                                        </td>
+                                                    </tr>
+                                                )
+                                            })}
+                                        </tbody>
+                                    </table>
+                                </div>
+                                {successCriteria.every(sc => pocTasks.filter(t => t.success_criteria_ids?.includes(sc.id!)).length === 0) && (
+                                    <p className="text-sm text-gray-500 text-center mt-4">No tasks are associated with success criteria yet.</p>
+                                )}
+                            </div>
+                        )}
 
                         {/* Progress Summary */}
                         <div className="bg-white border border-gray-200 rounded-lg p-6">
@@ -1299,6 +1559,9 @@ export default function POCForm({ pocId, initialData, onClose }: POCFormProps) {
                                                             <option value="in_progress">In Progress</option>
                                                             <option value="completed">Completed</option>
                                                             <option value="blocked">Blocked</option>
+                                                            <option value="satisfied">Satisfied</option>
+                                                            <option value="partially_satisfied">Partially Satisfied</option>
+                                                            <option value="not_satisfied">Not Satisfied</option>
                                                         </select>
                                                         <button
                                                             onClick={() => handleOpenAssignmentModal(task)}
@@ -1306,6 +1569,13 @@ export default function POCForm({ pocId, initialData, onClose }: POCFormProps) {
                                                             title="Assign Participants"
                                                         >
                                                             👥 Assign
+                                                        </button>
+                                                        <button
+                                                            onClick={() => handleOpenCriteriaEdit(task)}
+                                                            className="px-3 py-1.5 bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 text-sm"
+                                                            title="Link Success Criteria"
+                                                        >
+                                                            🎯 Criteria
                                                         </button>
                                                         <button
                                                             onClick={() => {
@@ -1514,6 +1784,9 @@ export default function POCForm({ pocId, initialData, onClose }: POCFormProps) {
                                                                 <option value="in_progress">In Progress</option>
                                                                 <option value="completed">Completed</option>
                                                                 <option value="blocked">Blocked</option>
+                                                                <option value="satisfied">Satisfied</option>
+                                                                <option value="partially_satisfied">Partially Satisfied</option>
+                                                                <option value="not_satisfied">Not Satisfied</option>
                                                             </select>
                                                             <button
                                                                 onClick={() => {
@@ -1596,6 +1869,9 @@ export default function POCForm({ pocId, initialData, onClose }: POCFormProps) {
                                                                                     <option value="in_progress">In Progress</option>
                                                                                     <option value="completed">Completed</option>
                                                                                     <option value="blocked">Blocked</option>
+                                                                                    <option value="satisfied">Satisfied</option>
+                                                                                    <option value="partially_satisfied">Partially Satisfied</option>
+                                                                                    <option value="not_satisfied">Not Satisfied</option>
                                                                                 </select>
                                                                                 <button
                                                                                     onClick={() => handleOpenAssignmentModal(task)}
@@ -1603,6 +1879,13 @@ export default function POCForm({ pocId, initialData, onClose }: POCFormProps) {
                                                                                     title="Assign Participants"
                                                                                 >
                                                                                     👥
+                                                                                </button>
+                                                                                <button
+                                                                                    onClick={() => handleOpenCriteriaEdit(task)}
+                                                                                    className="px-2 py-1 bg-purple-100 text-purple-700 rounded hover:bg-purple-200 text-xs"
+                                                                                    title="Link Success Criteria"
+                                                                                >
+                                                                                    🎯
                                                                                 </button>
                                                                                 <button
                                                                                     onClick={() => {
@@ -2065,6 +2348,126 @@ export default function POCForm({ pocId, initialData, onClose }: POCFormProps) {
                     }}
                     onAssigned={handleAssignmentComplete}
                 />
+            )}
+
+            {/* Status Comment Modal */}
+            {showStatusCommentModal && pendingStatusChange && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                    <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+                        <h3 className="text-xl font-semibold mb-2">
+                            {pendingStatusChange.status === 'partially_satisfied' ? 'Partially Satisfied' : 'Not Satisfied'} — Comment Required
+                        </h3>
+                        <p className="text-gray-600 mb-4 text-sm">
+                            Please provide a comment explaining why this {pendingStatusChange.type === 'task' ? 'task' : 'task group'} is being marked as{' '}
+                            <strong>{pendingStatusChange.status === 'partially_satisfied' ? 'Partially Satisfied' : 'Not Satisfied'}</strong>.
+                        </p>
+                        <textarea
+                            value={statusCommentText}
+                            onChange={(e) => setStatusCommentText(e.target.value)}
+                            placeholder="Enter your comment here (required)..."
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                            rows={4}
+                            autoFocus
+                        />
+                        <div className="flex justify-end gap-3 mt-4">
+                            <button
+                                onClick={() => {
+                                    setShowStatusCommentModal(false)
+                                    setPendingStatusChange(null)
+                                    setStatusCommentText('')
+                                }}
+                                className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 text-sm"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleStatusCommentSubmit}
+                                disabled={!statusCommentText.trim()}
+                                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-sm"
+                            >
+                                Submit
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Criteria Edit Modal */}
+            {showCriteriaEditModal && criteriaEditTaskId && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                    <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+                        <h3 className="text-xl font-semibold mb-4">Link Success Criteria</h3>
+                        <p className="text-gray-600 mb-4 text-sm">
+                            Select which success criteria this task should be linked to.
+                        </p>
+                        <div className="border border-gray-300 rounded-lg p-3 max-h-60 overflow-y-auto space-y-1">
+                            {successCriteria.length === 0 ? (
+                                <p className="text-sm text-gray-500">No success criteria defined yet</p>
+                            ) : (
+                                successCriteria.map((criteria) => (
+                                    <label key={criteria.id} className="flex items-center py-2 px-2 hover:bg-gray-50 rounded cursor-pointer">
+                                        <input
+                                            type="checkbox"
+                                            checked={criteriaEditSelectedIds.includes(criteria.id!)}
+                                            onChange={(e) => {
+                                                if (e.target.checked) {
+                                                    setCriteriaEditSelectedIds([...criteriaEditSelectedIds, criteria.id!])
+                                                } else {
+                                                    setCriteriaEditSelectedIds(criteriaEditSelectedIds.filter(id => id !== criteria.id))
+                                                }
+                                            }}
+                                            className="h-4 w-4 text-purple-600 rounded"
+                                        />
+                                        <span className="ml-2 text-sm text-gray-900">{criteria.title}</span>
+                                    </label>
+                                ))
+                            )}
+                        </div>
+                        <div className="flex justify-end gap-3 mt-4">
+                            <button
+                                onClick={() => {
+                                    setShowCriteriaEditModal(false)
+                                    setCriteriaEditTaskId(null)
+                                    setCriteriaEditSelectedIds([])
+                                }}
+                                className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 text-sm"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleSaveCriteriaEdit}
+                                className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 text-sm"
+                            >
+                                Save
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Criteria Task List Modal */}
+            {showCriteriaTaskListModal && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                    <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4 max-h-[70vh] flex flex-col">
+                        <h3 className="text-lg font-semibold text-gray-900 mb-4">{criteriaTaskListTitle}</h3>
+                        <ul className="space-y-2 overflow-y-auto flex-1 mb-4">
+                            {criteriaTaskListNames.map((name, idx) => (
+                                <li key={idx} className="flex items-center gap-2 text-sm text-gray-800">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-gray-400 flex-shrink-0" />
+                                    {name}
+                                </li>
+                            ))}
+                        </ul>
+                        <div className="flex justify-end">
+                            <button
+                                onClick={() => setShowCriteriaTaskListModal(false)}
+                                className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 text-sm"
+                            >
+                                Close
+                            </button>
+                        </div>
+                    </div>
+                </div>
             )}
         </div >
     )

@@ -53,6 +53,9 @@ class TaskStatus(str, enum.Enum):
     IN_PROGRESS = "in_progress"
     COMPLETED = "completed"
     BLOCKED = "blocked"
+    SATISFIED = "satisfied"
+    PARTIALLY_SATISFIED = "partially_satisfied"
+    NOT_SATISFIED = "not_satisfied"
 
 
 class Task(Base):
