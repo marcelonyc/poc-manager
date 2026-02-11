@@ -66,6 +66,7 @@ nav:
   - Tenant Admin:
     - User Management: tenant-admin/users.md
     - Tenant Settings: tenant-admin/settings.md
+    - Public Links: tenant-admin/public-links.md
   - Administrator:
     - Task Templates: administrator/task-templates.md
     - Creating POCs: administrator/creating-pocs.md
@@ -85,3 +86,4 @@ nav:
     - Comments System: features/comments.md
     - Document Generation: features/documents.md
     - Resources: features/resources.md
+    - Public Links: features/public-links.md
