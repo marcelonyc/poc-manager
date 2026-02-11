@@ -1,7 +1,7 @@
 """Make comments task/task-group specific instead of POC-level
 
 Revision ID: make_comments_task_specific
-Revises: c3d4e5f6g7h8_add_guest_comments
+Revises: c3d4e5f6g7h8
 Create Date: 2026-02-11 23:00:00.000000
 
 """
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision = "make_comments_task_specific"
-down_revision = "c3d4e5f6g7h8_add_guest_comments"
+down_revision = "c3d4e5f6g7h8"
 branch_labels = None
 depends_on = None
 
