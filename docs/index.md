@@ -1,5 +1,35 @@
 # POC Manager User Guide
 
+<div style="background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 50%, #6366f1 100%); border-radius: 16px; padding: 2.5rem 2rem; margin-bottom: 2rem; color: white; position: relative; overflow: hidden;" markdown>
+
+<div style="position: absolute; top: -20px; right: -20px; width: 200px; height: 200px; background: rgba(255,255,255,0.08); border-radius: 50%;"></div>
+<div style="position: absolute; bottom: -30px; left: -30px; width: 150px; height: 150px; background: rgba(255,255,255,0.05); border-radius: 50%;"></div>
+
+<div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem;">
+<span style="font-size: 2.5rem;">🤖</span>
+<div>
+<span style="background: rgba(255,255,255,0.2); color: #fbbf24; font-size: 0.75rem; font-weight: 700; padding: 0.2rem 0.7rem; border-radius: 1rem; letter-spacing: 0.05em;">✨ NEW — BETA</span>
+<h2 style="margin: 0.3rem 0 0 0; font-size: 1.75rem; font-weight: 800; color: white;">AI Assistant</h2>
+</div>
+</div>
+
+<p style="font-size: 1.1rem; line-height: 1.6; margin-bottom: 1rem; opacity: 0.95;">
+Ask questions about your POCs in <strong>plain English</strong>. The AI Assistant retrieves live data from your projects, tasks, and resources — giving you instant, context-aware answers powered by LLMs and MCP tools.
+</p>
+
+<div style="display: flex; flex-wrap: wrap; gap: 0.6rem; margin-bottom: 1.5rem;">
+<span style="background: rgba(255,255,255,0.15); padding: 0.35rem 0.85rem; border-radius: 2rem; font-size: 0.85rem;">💬 Natural Language Queries</span>
+<span style="background: rgba(255,255,255,0.15); padding: 0.35rem 0.85rem; border-radius: 2rem; font-size: 0.85rem;">⚡ Real-Time Data Retrieval</span>
+<span style="background: rgba(255,255,255,0.15); padding: 0.35rem 0.85rem; border-radius: 2rem; font-size: 0.85rem;">🔒 Role-Based Access</span>
+<span style="background: rgba(255,255,255,0.15); padding: 0.35rem 0.85rem; border-radius: 2rem; font-size: 0.85rem;">🔑 Bring Your Own Model</span>
+</div>
+
+[**Explore AI Assistant →**](features/ai-assistant.md){ style="display: inline-block; background: white; color: #4f46e5; font-weight: 700; padding: 0.6rem 1.5rem; border-radius: 0.5rem; text-decoration: none; transition: transform 0.2s;" }
+&nbsp;&nbsp;
+[Setup Guide →](tenant-admin/ai-assistant.md){ style="display: inline-block; background: rgba(255,255,255,0.15); color: white; font-weight: 600; padding: 0.6rem 1.5rem; border-radius: 0.5rem; text-decoration: none; border: 1px solid rgba(255,255,255,0.3);" }
+
+</div>
+
 Welcome to the **POC Manager** - a comprehensive platform for managing Proof of Concept (POC) engagements across your organization.
 
 ## What is POC Manager?
