@@ -27,6 +27,38 @@ Before using the AI Assistant, your Tenant Admin must:
 !!! info "Cloud-Hosted Models"
     The AI Assistant uses cloud-hosted language models through an Ollama-compatible API. Your Tenant Admin manages the API key configuration. No local installation is required.
 
+
+## Getting an Ollama API Key
+
+### Step 1: Create an Ollama Account
+
+1. Visit [ollama.com](https://ollama.com)
+2. Click **Sign Up** in the top-right corner
+3. Enter your email address and create a password
+4. Verify your email by clicking the link sent to your inbox
+5. Complete your profile information
+
+### Step 2: Generate an API Key
+
+1. Log in to your Ollama account
+2. Navigate to **Account Settings** → **API Keys**
+3. Click **Create New API Key**
+4. Give it a descriptive name (e.g., "POC Manager")
+5. Select the appropriate permissions for the AI Assistant
+6. Click **Generate**
+7. Copy the API key immediately—you won't be able to see it again
+
+!!! warning "Secure Your API Key"
+    - Store it in a password manager or secure secrets vault
+    - Never commit it to version control
+    - Never share it with team members directly
+    - Regenerate it if you suspect it's been compromised
+
+### Step 3: Add to POC Manager
+
+Once you have your API key, follow the [Enabling AI Assistant](#enabling-ai-assistant) instructions above to configure it in your tenant settings.
+
+
 ### Opening the AI Assistant
 
 1. Look for the **AI Assistant button** (💬 with "AI Assistant" label) in the bottom-right corner of the screen

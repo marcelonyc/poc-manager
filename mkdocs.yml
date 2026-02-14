@@ -82,6 +82,7 @@ nav:
     - Viewing POCs: customer/viewing-pocs.md
     - Providing Feedback: customer/providing-feedback.md
     - Task Completion: customer/task-completion.md
+    - Public Links: customer/accessing-public-pocs.md
   - Features:
     - Dashboard: features/dashboard.md
     - AI Assistant: features/ai-assistant.md
@@ -89,4 +90,4 @@ nav:
     - Document Generation: features/documents.md
     - Resources: features/resources.md
     - Task Assignment: features/task-assignment.md
-    - Public Links: features/public-links.md
+    - Public Links: features/public-share-links.md
