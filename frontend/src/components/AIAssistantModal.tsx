@@ -218,7 +218,7 @@ export default function AIAssistantModal({ isOpen, onClose }: { isOpen: boolean;
                         <p className="text-sm text-gray-600 mb-4">{status?.message}</p>
                         {user?.role === 'tenant_admin' && !status?.enabled && (
                             <a
-                                href="/settings"
+                                href="settings"
                                 className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 text-sm font-medium transition-colors"
                                 onClick={handleClose}
                             >
