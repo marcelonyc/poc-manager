@@ -396,7 +396,31 @@ async def set_demo_password(
 async def validate_verification_token(
     token: str, db: Session = Depends(get_db)
 ):
-    """Validate if a verification token is valid and get demo request details"""
+    """
+    Validate a demo request email verification token.
+
+    Public endpoint (no authentication required). Checks whether the token
+    exists and has not expired. Returns the demo request details associated
+    with the token to populate the setup form.
+
+    Route: GET /demo/validate-token/{token}
+
+    Path parameters:
+        token (str): The email verification token.
+
+    Returns:
+        Dict containing:
+            - valid (bool): Always true if returned successfully.
+            - is_verified (bool): Whether the demo request email has been verified.
+            - is_completed (bool): Whether the demo account setup is complete.
+            - name (str): Requestor's name.
+            - email (str): Requestor's email.
+            - company_name (str): Requestor's company name.
+
+    Errors:
+        404 Not Found: Token does not exist.
+        400 Bad Request: Token has expired.
+    """
     verification_token = (
         db.query(EmailVerificationToken)
         .filter(EmailVerificationToken.token == token)
@@ -558,7 +582,32 @@ async def list_conversion_requests(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """List all demo conversion requests (Platform Admin only)"""
+    """
+    List all demo-to-production conversion requests.
+
+    Returns all conversion requests across the platform, sorted by creation
+    date (newest first). Use this to review and manage pending demo account
+    upgrade requests.
+
+    Route: GET /demo/conversions
+
+    Returns:
+        List of conversion request objects, each containing:
+            - id (int): Unique request identifier.
+            - tenant_id (int): Demo tenant requesting conversion.
+            - requested_by_user_id (int): User who initiated the request.
+            - reason (str | null): Reason for conversion.
+            - status (str): One of "pending", "approved", "rejected".
+            - approved (bool | null): Whether the request was approved.
+            - approved_by_user_id (int | null): Admin who processed the request.
+            - approved_at (datetime | null): When the request was processed.
+            - rejection_reason (str | null): Reason if rejected.
+            - created_at (datetime): When the request was submitted.
+
+    Errors:
+        403 Forbidden: Caller is not a platform admin.
+        401 Unauthorized: Missing or invalid authentication token.
+    """
     if current_user.role != UserRole.PLATFORM_ADMIN:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -580,7 +629,22 @@ async def get_demo_limits(
     db: Session = Depends(get_db),
     tenant_id: int = Depends(get_current_tenant_id),
 ):
-    """Get demo account limits and current usage"""
+    """
+    Get demo account limits and current usage.
+
+    Returns the resource limits configured for the demo tenant and how much
+    of each limit has been consumed. Useful for showing usage gauges in the
+    demo account UI.
+
+    Route: GET /demo/limits
+
+    Returns:
+        Dict containing limit and usage information for the demo tenant,
+        including resource caps and current consumption counts.
+
+    Errors:
+        401 Unauthorized: Missing or invalid authentication token.
+    """
     return get_demo_limits_info(db, tenant_id, current_user.tenant)
 
 
@@ -592,7 +656,38 @@ async def list_demo_users(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """List all demo requests (Platform Admin only)"""
+    """
+    List all demo account requests.
+
+    Returns every demo request submitted to the platform, sorted by creation
+    date (newest first). Includes verification and completion status as well
+    as linked tenant information.
+
+    Route: GET /demo/users
+
+    Returns:
+        Object containing:
+            - total (int): Total number of demo requests.
+            - users (list): Demo request objects, each with:
+                - id (int): Unique demo request identifier.
+                - name (str): Requestor name.
+                - email (str): Requestor email.
+                - company_name (str): Company name.
+                - sales_engineers_count (int | null): Requested SE count.
+                - pocs_per_quarter (int | null): Requested POC quota.
+                - is_verified (bool): Email verified.
+                - is_completed (bool): Account setup completed.
+                - tenant_id (int | null): Created tenant ID.
+                - user_id (int | null): Created user ID.
+                - tenant_name (str | null): Created tenant name.
+                - created_at (datetime): Request submission time.
+                - verified_at (datetime | null): Email verification time.
+                - completed_at (datetime | null): Account setup completion time.
+
+    Errors:
+        403 Forbidden: Caller is not a platform admin.
+        401 Unauthorized: Missing or invalid authentication token.
+    """
     if current_user.role != UserRole.PLATFORM_ADMIN:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,

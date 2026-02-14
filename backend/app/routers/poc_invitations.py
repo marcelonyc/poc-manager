@@ -147,7 +147,41 @@ def list_poc_invitations(
     current_user: User = Depends(get_current_user),
     tenant_id: int = Depends(get_current_tenant_id),
 ):
-    """List all invitations for a POC"""
+    """
+    List all invitations for a specific POC.
+
+    Returns invitations sent to participants for this POC, sorted by creation
+    date (newest first). Supports filtering by invitation status. The poc_id
+    is provided as a path parameter from the router prefix.
+
+    Route: GET /pocs/{poc_id}/invitations/?status_filter=
+
+    Path parameters:
+        poc_id (int): The unique identifier of the POC (from URL path).
+
+    Query parameters:
+        status_filter (str, optional): Filter by status — one of "pending", "accepted", "expired", "revoked", "failed".
+
+    Returns:
+        List of POC invitation objects, each containing:
+            - id (int): Unique invitation identifier.
+            - poc_id (int): Associated POC identifier.
+            - email (str): Invitee email address.
+            - full_name (str): Invitee display name.
+            - is_customer (bool): Whether invitee is a customer participant.
+            - token (str): Invitation token.
+            - status (str): Current invitation status.
+            - personal_message (str | null): Custom message included in invitation.
+            - created_at (datetime): When the invitation was sent.
+            - expires_at (datetime): Expiration timestamp.
+            - accepted_at (datetime | null): When accepted.
+            - resend_count (int): Number of times the invitation was resent.
+
+    Errors:
+        404 Not Found: POC does not exist.
+        403 Forbidden: Caller's tenant does not match the POC's tenant.
+        401 Unauthorized: Missing or invalid authentication token.
+    """
     # Check if POC exists and user has access
     poc = db.query(POC).filter(POC.id == poc_id).first()
     if not poc:

@@ -1,6 +1,6 @@
 """User Tenant Role schemas"""
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from typing import Optional
 from datetime import datetime
 from app.models.user import UserRole
@@ -33,9 +33,8 @@ class UserTenantRoleUpdate(BaseModel):
 class UserTenantRole(UserTenantRoleBase):
     """Schema for user-tenant-role response"""
 
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     created_at: datetime
     updated_at: Optional[datetime]
-
-    class Config:
-        from_attributes = True

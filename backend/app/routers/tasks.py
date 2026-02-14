@@ -67,7 +67,23 @@ def create_task_template(
     current_user: User = Depends(require_administrator),
     tenant_id: int = Depends(get_current_tenant_id),
 ):
-    """Create a reusable task template"""
+    """
+    Create a reusable task template.
+
+    Purpose: Define a task template that can be reused across multiple POCs.
+    Templates enable standardization and faster POC setup.
+
+    Args:
+        task_data: TaskCreate with title and description
+
+    Returns:
+        TaskSchema marking task as template
+
+    Requires: Administrator role
+
+    Raises:
+        403 Forbidden: Insufficient permissions
+    """
     # Check demo limits
     check_demo_task_limit(db, tenant_id, current_user.tenant)
 
@@ -92,7 +108,32 @@ def list_task_templates(
     current_user: User = Depends(get_current_user),
     tenant_id: int = Depends(get_current_tenant_id),
 ):
-    """List task templates"""
+    """
+    List all reusable task templates for the current tenant.
+
+    Returns the catalog of task templates that can be added to POCs.
+    Templates are tenant-scoped; only templates belonging to the caller's tenant are returned.
+    Use this to discover available tasks before adding them to a POC.
+
+    Route: GET /tasks/templates?skip=0&limit=100
+
+    Query parameters:
+        skip (int, default 0): Number of records to skip for pagination.
+        limit (int, default 100): Maximum number of records to return (max 100).
+
+    Returns:
+        List of task template objects, each containing:
+            - id (int): Unique task template identifier.
+            - title (str): Template name.
+            - description (str | null): Detailed template description.
+            - tenant_id (int): Owning tenant ID.
+            - created_by (int): User ID of the creator.
+            - is_template (bool): Always true for templates.
+            - created_at (datetime): Creation timestamp.
+
+    Errors:
+        401 Unauthorized: Missing or invalid authentication token.
+    """
     tasks = (
         db.query(Task)
         .filter(Task.tenant_id == tenant_id, Task.is_template == True)
@@ -111,7 +152,24 @@ def update_task_template(
     current_user: User = Depends(require_administrator),
     tenant_id: int = Depends(get_current_tenant_id),
 ):
-    """Update a task template"""
+    """
+    Update a task template.
+
+    Purpose: Modify task template details (title, description).
+
+    Args:
+        task_id (int): Task template ID
+        task_data: TaskUpdate with fields to modify
+
+    Returns:
+        Updated TaskSchema
+
+    Requires: Administrator role
+
+    Raises:
+        404 Not Found: Template not found
+        403 Forbidden: Insufficient permissions
+    """
     # Fetch with tenant filter to prevent enumeration
     task = (
         db.query(Task)
@@ -123,7 +181,7 @@ def update_task_template(
             status_code=status.HTTP_404_NOT_FOUND, detail="Task not found"
         )
 
-    update_data = task_data.dict(exclude_unset=True)
+    update_data = task_data.model_dump(exclude_unset=True)
     for field, value in update_data.items():
         setattr(task, field, value)
 
@@ -144,7 +202,23 @@ def create_task_group_template(
     current_user: User = Depends(require_administrator),
     tenant_id: int = Depends(get_current_tenant_id),
 ):
-    """Create a reusable task group template"""
+    """
+    Create a reusable task group template.
+
+    Purpose: Define a task group template containing multiple related tasks.
+    Groups enable organizing related tasks and can be used together in POCs.
+
+    Args:
+        group_data: TaskGroupCreate with title and description
+
+    Returns:
+        TaskGroupSchema marking group as template
+
+    Requires: Administrator role
+
+    Raises:
+        403 Forbidden: Insufficient permissions
+    """
     # Check demo limits
     check_demo_task_group_limit(db, tenant_id, current_user.tenant)
 
@@ -169,7 +243,33 @@ def list_task_group_templates(
     current_user: User = Depends(get_current_user),
     tenant_id: int = Depends(get_current_tenant_id),
 ):
-    """List task group templates"""
+    """
+    List all reusable task group templates for the current tenant.
+
+    Returns the catalog of task group templates that bundle related tasks together.
+    Groups are tenant-scoped; only groups belonging to the caller's tenant are returned.
+    Use this to discover available task groups before adding them to a POC.
+
+    Route: GET /tasks/groups/templates?skip=0&limit=100
+
+    Query parameters:
+        skip (int, default 0): Number of records to skip for pagination.
+        limit (int, default 100): Maximum number of records to return (max 100).
+
+    Returns:
+        List of task group template objects, each containing:
+            - id (int): Unique task group template identifier.
+            - title (str): Group template name.
+            - description (str | null): Detailed group description.
+            - tenant_id (int): Owning tenant ID.
+            - created_by (int): User ID of the creator.
+            - is_template (bool): Always true for templates.
+            - created_at (datetime): Creation timestamp.
+            - tasks (list): List of task templates belonging to this group.
+
+    Errors:
+        401 Unauthorized: Missing or invalid authentication token.
+    """
     groups = (
         db.query(TaskGroup)
         .filter(
@@ -191,7 +291,24 @@ def update_task_group_template(
     current_user: User = Depends(require_administrator),
     tenant_id: int = Depends(get_current_tenant_id),
 ):
-    """Update a task group"""
+    """
+    Update a task group template.
+
+    Purpose: Modify task group template details.
+
+    Args:
+        group_id (int): Task group template ID
+        group_data: TaskGroupUpdate with fields to modify
+
+    Returns:
+        Updated TaskGroupSchema
+
+    Requires: Administrator role
+
+    Raises:
+        404 Not Found: Template not found
+        403 Forbidden: Insufficient permissions
+    """
     # Fetch with tenant filter to prevent enumeration
     task_group = (
         db.query(TaskGroup)
@@ -204,7 +321,7 @@ def update_task_group_template(
             detail="Task group not found",
         )
 
-    update_data = group_data.dict(exclude_unset=True)
+    update_data = group_data.model_dump(exclude_unset=True)
     for field, value in update_data.items():
         setattr(task_group, field, value)
 
@@ -220,7 +337,31 @@ def get_task_group_tasks(
     current_user: User = Depends(get_current_user),
     tenant_id: int = Depends(get_current_tenant_id),
 ):
-    """Get tasks in a task group"""
+    """
+    List all task templates that belong to a specific task group template.
+
+    Returns the individual task templates associated with the given group.
+    Use this to inspect which tasks are bundled in a group before adding the group to a POC.
+
+    Route: GET /tasks/groups/{group_id}/tasks
+
+    Path parameters:
+        group_id (int): The unique identifier of the task group template.
+
+    Returns:
+        List of task template objects, each containing:
+            - id (int): Unique task template identifier.
+            - title (str): Task name.
+            - description (str | null): Task description.
+            - tenant_id (int): Owning tenant ID.
+            - created_by (int): User ID of the creator.
+            - is_template (bool): Always true.
+            - created_at (datetime): Creation timestamp.
+
+    Errors:
+        404 Not Found: Task group template with the given group_id does not exist in the caller's tenant.
+        401 Unauthorized: Missing or invalid authentication token.
+    """
     # Fetch with tenant filter to prevent enumeration
     group = (
         db.query(TaskGroup)
@@ -368,7 +509,43 @@ def list_poc_tasks(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """List tasks for a POC"""
+    """
+    List all tasks for a specific POC, including assignees and linked success criteria.
+
+    Returns every task currently added to the POC, sorted by sort_order.
+    Each task includes the list of participants assigned to it and the IDs of
+    success criteria it is linked to. Use this to get a complete view of POC
+    task progress and responsibility assignments.
+
+    Route: GET /tasks/pocs/{poc_id}/tasks
+
+    Path parameters:
+        poc_id (int): The unique identifier of the POC.
+
+    Returns:
+        List of POC task objects, each containing:
+            - id (int): Unique POC task identifier.
+            - poc_id (int): Parent POC identifier.
+            - task_id (int | null): Reference to the source task template, if any.
+            - title (str): Task name.
+            - description (str | null): Task description.
+            - status (str): Current status — one of "not_started", "in_progress", "completed", "blocked".
+            - success_level (int | null): Numeric success rating (set after completion).
+            - sort_order (int): Display/execution order within the POC.
+            - created_at (datetime): Creation timestamp.
+            - completed_at (datetime | null): Completion timestamp, if completed.
+            - assignees (list): People assigned to this task, each with:
+                - id (int): Assignee record identifier.
+                - participant_id (int): POC participant identifier.
+                - participant_name (str): Full name of the assigned person.
+                - participant_email (str): Email address of the assigned person.
+                - assigned_at (datetime): When the assignment was made.
+            - success_criteria_ids (list[int]): IDs of success criteria linked to this task.
+
+    Errors:
+        404 Not Found: POC with the given poc_id does not exist.
+        401 Unauthorized: Missing or invalid authentication token.
+    """
     poc = db.query(POC).filter(POC.id == poc_id).first()
     if not poc:
         raise HTTPException(
@@ -439,7 +616,7 @@ def update_poc_task(
             status_code=status.HTTP_404_NOT_FOUND, detail="Task not found"
         )
 
-    update_data = task_data.dict(exclude_unset=True)
+    update_data = task_data.model_dump(exclude_unset=True)
 
     # Handle success_criteria_ids separately (junction table)
     if "success_criteria_ids" in update_data:
@@ -594,7 +771,30 @@ def get_task_assignees(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Get all assignees for a POC task"""
+    """
+    List all participants assigned to a specific POC task.
+
+    Returns the people responsible for completing this task within the POC.
+    Use this to check who is working on a particular task.
+
+    Route: GET /tasks/pocs/{poc_id}/tasks/{task_id}/assignees
+
+    Path parameters:
+        poc_id (int): The unique identifier of the POC.
+        task_id (int): The unique identifier of the POC task.
+
+    Returns:
+        List of assignee objects, each containing:
+            - id (int): Assignee record identifier.
+            - participant_id (int): POC participant identifier.
+            - participant_name (str): Full name of the assigned person.
+            - participant_email (str): Email address of the assigned person.
+            - assigned_at (datetime): When the assignment was made.
+
+    Errors:
+        404 Not Found: POC task with the given task_id does not exist in the specified POC.
+        401 Unauthorized: Missing or invalid authentication token.
+    """
     # Verify task exists
     poc_task = (
         db.query(POCTask)
@@ -712,7 +912,37 @@ def list_poc_task_groups(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """List task groups for a POC"""
+    """
+    List all task groups for a specific POC, including their tasks, assignees, and success criteria.
+
+    Returns every task group currently added to the POC, sorted by sort_order.
+    Each group includes its nested tasks (with assignees) and linked success criteria IDs.
+    Use this to get a hierarchical view of POC work organized by groups.
+
+    Route: GET /tasks/pocs/{poc_id}/task-groups
+
+    Path parameters:
+        poc_id (int): The unique identifier of the POC.
+
+    Returns:
+        List of POC task group objects, each containing:
+            - id (int): Unique POC task group identifier.
+            - poc_id (int): Parent POC identifier.
+            - task_group_id (int | null): Reference to the source task group template, if any.
+            - title (str): Group name.
+            - description (str | null): Group description.
+            - status (str): Current status — one of "not_started", "in_progress", "completed", "blocked".
+            - success_level (int | null): Numeric success rating (set after completion).
+            - sort_order (int): Display order within the POC.
+            - created_at (datetime): Creation timestamp.
+            - completed_at (datetime | null): Completion timestamp, if completed.
+            - success_criteria_ids (list[int]): IDs of success criteria linked to this group.
+            - tasks (list): POC tasks within this group, each with full task fields
+              (id, title, description, status, assignees, success_criteria_ids, etc.).
+
+    Errors:
+        401 Unauthorized: Missing or invalid authentication token.
+    """
     groups = (
         db.query(POCTaskGroup)
         .filter(POCTaskGroup.poc_id == poc_id)
@@ -812,7 +1042,7 @@ def update_poc_task_group(
             detail="Task group not found",
         )
 
-    update_data = group_data.dict(exclude_unset=True)
+    update_data = group_data.model_dump(exclude_unset=True)
     for field, value in update_data.items():
         setattr(poc_group, field, value)
 
@@ -837,10 +1067,42 @@ def get_poc_task_group_tasks(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Get tasks for a POC task group
+    """
+    List all tasks within a specific task group in a POC.
 
-    Returns POC tasks that were created from the task group's template tasks.
-    If the task group has a template, returns tasks that match the template's task IDs.
+    Returns the POC tasks that belong to the given group, based on the group's
+    template task membership. Each task includes its assignees and linked success
+    criteria. Returns an empty list if the group has no template or no matching tasks.
+
+    Route: GET /tasks/pocs/{poc_id}/task-groups/{group_id}/tasks
+
+    Path parameters:
+        poc_id (int): The unique identifier of the POC.
+        group_id (int): The unique identifier of the POC task group.
+
+    Returns:
+        List of POC task objects, each containing:
+            - id (int): Unique POC task identifier.
+            - poc_id (int): Parent POC identifier.
+            - task_id (int | null): Reference to the source task template.
+            - title (str): Task name.
+            - description (str | null): Task description.
+            - status (str): Current status — one of "not_started", "in_progress", "completed", "blocked".
+            - success_level (int | null): Numeric success rating.
+            - sort_order (int): Display order.
+            - created_at (datetime): Creation timestamp.
+            - completed_at (datetime | null): Completion timestamp.
+            - assignees (list): People assigned to this task, each with:
+                - id (int): Assignee record identifier.
+                - participant_id (int): POC participant identifier.
+                - participant_name (str): Full name.
+                - participant_email (str): Email address.
+                - assigned_at (datetime): Assignment timestamp.
+            - success_criteria_ids (list[int]): IDs of linked success criteria.
+
+    Errors:
+        404 Not Found: Task group with the given group_id does not exist in the specified POC.
+        401 Unauthorized: Missing or invalid authentication token.
     """
     # Get the POC task group
     poc_group = (
@@ -976,7 +1238,35 @@ def list_task_template_resources(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """List resources for a task template"""
+    """
+    List all resources attached to a specific task template.
+
+    Returns links, code snippets, text blocks, or file references associated with
+    the task template. Resources are sorted by sort_order. Use this to see what
+    reference materials are available for a task template.
+
+    Route: GET /tasks/templates/{task_id}/resources
+
+    Path parameters:
+        task_id (int): The unique identifier of the task template.
+
+    Returns:
+        List of task resource objects, each containing:
+            - id (int): Unique resource identifier.
+            - task_id (int): Parent task template identifier.
+            - title (str): Resource name.
+            - description (str | null): Resource description.
+            - resource_type (str): Type of resource — one of "link", "code", "text", "file".
+            - content (str): Resource content (URL, code snippet, text, or file path).
+            - sort_order (int): Display order.
+            - created_at (datetime): Creation timestamp.
+            - updated_at (datetime | null): Last update timestamp.
+
+    Errors:
+        404 Not Found: Task template with the given task_id does not exist.
+        403 Forbidden: Caller does not have access to this task's tenant.
+        401 Unauthorized: Missing or invalid authentication token.
+    """
     task = db.query(Task).filter(Task.id == task_id).first()
     if not task:
         raise HTTPException(
@@ -1028,7 +1318,7 @@ def update_task_template_resource(
             status_code=status.HTTP_403_FORBIDDEN, detail="Access denied"
         )
 
-    update_data = resource_data.dict(exclude_unset=True)
+    update_data = resource_data.model_dump(exclude_unset=True)
     for field, value in update_data.items():
         setattr(resource, field, value)
 
@@ -1123,7 +1413,35 @@ def list_task_group_resources(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """List resources for a task group template"""
+    """
+    List all resources attached to a specific task group template.
+
+    Returns links, code snippets, text blocks, or file references associated with
+    the task group template. Resources are sorted by sort_order. Use this to see
+    what reference materials are available for a task group.
+
+    Route: GET /tasks/groups/templates/{group_id}/resources
+
+    Path parameters:
+        group_id (int): The unique identifier of the task group template.
+
+    Returns:
+        List of task group resource objects, each containing:
+            - id (int): Unique resource identifier.
+            - task_group_id (int): Parent task group template identifier.
+            - title (str): Resource name.
+            - description (str | null): Resource description.
+            - resource_type (str): Type of resource — one of "link", "code", "text", "file".
+            - content (str): Resource content (URL, code snippet, text, or file path).
+            - sort_order (int): Display order.
+            - created_at (datetime): Creation timestamp.
+            - updated_at (datetime | null): Last update timestamp.
+
+    Errors:
+        404 Not Found: Task group template with the given group_id does not exist.
+        403 Forbidden: Caller does not have access to this group's tenant.
+        401 Unauthorized: Missing or invalid authentication token.
+    """
     task_group = db.query(TaskGroup).filter(TaskGroup.id == group_id).first()
     if not task_group:
         raise HTTPException(
@@ -1176,7 +1494,7 @@ def update_task_group_resource(
             status_code=status.HTTP_403_FORBIDDEN, detail="Access denied"
         )
 
-    update_data = resource_data.dict(exclude_unset=True)
+    update_data = resource_data.model_dump(exclude_unset=True)
     for field, value in update_data.items():
         setattr(resource, field, value)
 

@@ -1,8 +1,11 @@
 """Tests for Platform Admin invitation functionality"""
+
 import pytest
 from datetime import datetime, timedelta
 from app.models.user import User, UserRole
 from app.models.invitation import Invitation, InvitationStatus
+from app.models.tenant import Tenant
+from app.models.user_tenant_role import UserTenantRole
 
 
 def test_create_invitation_as_platform_admin(client, platform_admin_token):
@@ -10,10 +13,7 @@ def test_create_invitation_as_platform_admin(client, platform_admin_token):
     response = client.post(
         "/invitations/",
         headers={"Authorization": f"Bearer {platform_admin_token}"},
-        json={
-            "email": "newadmin@example.com",
-            "full_name": "New Admin"
-        }
+        json={"email": "newadmin@example.com", "full_name": "New Admin"},
     )
     assert response.status_code == 201
     data = response.json()
@@ -28,15 +28,14 @@ def test_create_invitation_non_platform_admin(client, tenant_admin_token):
     response = client.post(
         "/invitations/",
         headers={"Authorization": f"Bearer {tenant_admin_token}"},
-        json={
-            "email": "newadmin@example.com",
-            "full_name": "New Admin"
-        }
+        json={"email": "newadmin@example.com", "full_name": "New Admin"},
     )
     assert response.status_code == 403
 
 
-def test_create_invitation_duplicate_email(client, platform_admin_token, db_session):
+def test_create_invitation_duplicate_email(
+    client, platform_admin_token, db_session
+):
     """Test that invitation fails for existing user email"""
     # Create a user first
     user = User(
@@ -44,7 +43,7 @@ def test_create_invitation_duplicate_email(client, platform_admin_token, db_sess
         full_name="Existing User",
         hashed_password="hashedpass",
         role=UserRole.PLATFORM_ADMIN,
-        is_active=True
+        is_active=True,
     )
     db_session.add(user)
     db_session.commit()
@@ -52,25 +51,21 @@ def test_create_invitation_duplicate_email(client, platform_admin_token, db_sess
     response = client.post(
         "/invitations/",
         headers={"Authorization": f"Bearer {platform_admin_token}"},
-        json={
-            "email": "existing@example.com",
-            "full_name": "New Admin"
-        }
+        json={"email": "existing@example.com", "full_name": "New Admin"},
     )
     assert response.status_code == 400
     assert "already exists" in response.json()["detail"]
 
 
-def test_create_invitation_duplicate_pending(client, platform_admin_token, db_session):
+def test_create_invitation_duplicate_pending(
+    client, platform_admin_token, db_session
+):
     """Test that duplicate pending invitations are not allowed"""
     # Create first invitation
     response1 = client.post(
         "/invitations/",
         headers={"Authorization": f"Bearer {platform_admin_token}"},
-        json={
-            "email": "invited@example.com",
-            "full_name": "Invited User"
-        }
+        json={"email": "invited@example.com", "full_name": "Invited User"},
     )
     assert response1.status_code == 201
 
@@ -78,10 +73,7 @@ def test_create_invitation_duplicate_pending(client, platform_admin_token, db_se
     response2 = client.post(
         "/invitations/",
         headers={"Authorization": f"Bearer {platform_admin_token}"},
-        json={
-            "email": "invited@example.com",
-            "full_name": "Invited User"
-        }
+        json={"email": "invited@example.com", "full_name": "Invited User"},
     )
     assert response2.status_code == 400
     assert "Pending invitation already exists" in response2.json()["detail"]
@@ -97,14 +89,14 @@ def test_list_invitations(client, platform_admin_token, db_session):
             token=f"token{i}",
             status=InvitationStatus.PENDING,
             invited_by_email="admin@example.com",
-            expires_at=datetime.utcnow() + timedelta(days=7)
+            expires_at=datetime.utcnow() + timedelta(days=7),
         )
         db_session.add(invitation)
     db_session.commit()
 
     response = client.get(
         "/invitations/",
-        headers={"Authorization": f"Bearer {platform_admin_token}"}
+        headers={"Authorization": f"Bearer {platform_admin_token}"},
     )
     assert response.status_code == 200
     data = response.json()
@@ -115,7 +107,7 @@ def test_list_invitations_non_platform_admin(client, tenant_admin_token):
     """Test that non-Platform Admin cannot list invitations"""
     response = client.get(
         "/invitations/",
-        headers={"Authorization": f"Bearer {tenant_admin_token}"}
+        headers={"Authorization": f"Bearer {tenant_admin_token}"},
     )
     assert response.status_code == 403
 
@@ -128,7 +120,7 @@ def test_validate_invitation_valid(client, db_session):
         token="validtoken123",
         status=InvitationStatus.PENDING,
         invited_by_email="admin@example.com",
-        expires_at=datetime.utcnow() + timedelta(days=7)
+        expires_at=datetime.utcnow() + timedelta(days=7),
     )
     db_session.add(invitation)
     db_session.commit()
@@ -154,7 +146,7 @@ def test_validate_invitation_expired(client, db_session):
         token="expiredtoken123",
         status=InvitationStatus.PENDING,
         invited_by_email="admin@example.com",
-        expires_at=datetime.utcnow() - timedelta(days=1)  # Expired
+        expires_at=datetime.utcnow() - timedelta(days=1),  # Expired
     )
     db_session.add(invitation)
     db_session.commit()
@@ -172,23 +164,24 @@ def test_accept_invitation(client, db_session):
         token="accepttoken123",
         status=InvitationStatus.PENDING,
         invited_by_email="admin@example.com",
-        expires_at=datetime.utcnow() + timedelta(days=7)
+        expires_at=datetime.utcnow() + timedelta(days=7),
     )
     db_session.add(invitation)
     db_session.commit()
 
     response = client.post(
         "/invitations/accept",
-        json={
-            "token": "accepttoken123",
-            "password": "securepassword123"
-        }
+        json={"token": "accepttoken123", "password": "securepassword123"},
     )
     assert response.status_code == 201
     assert "created successfully" in response.json()["message"]
 
     # Verify user was created
-    user = db_session.query(User).filter(User.email == "accept@example.com").first()
+    user = (
+        db_session.query(User)
+        .filter(User.email == "accept@example.com")
+        .first()
+    )
     assert user is not None
     assert user.role == UserRole.PLATFORM_ADMIN
     assert user.tenant_id is None
@@ -207,17 +200,14 @@ def test_accept_invitation_expired(client, db_session):
         token="expiredtoken456",
         status=InvitationStatus.PENDING,
         invited_by_email="admin@example.com",
-        expires_at=datetime.utcnow() - timedelta(days=1)
+        expires_at=datetime.utcnow() - timedelta(days=1),
     )
     db_session.add(invitation)
     db_session.commit()
 
     response = client.post(
         "/invitations/accept",
-        json={
-            "token": "expiredtoken456",
-            "password": "securepassword123"
-        }
+        json={"token": "expiredtoken456", "password": "securepassword123"},
     )
     assert response.status_code == 400
     assert "expired" in response.json()["detail"].lower()
@@ -231,7 +221,7 @@ def test_revoke_invitation(client, platform_admin_token, db_session):
         token="revoketoken123",
         status=InvitationStatus.PENDING,
         invited_by_email="admin@example.com",
-        expires_at=datetime.utcnow() + timedelta(days=7)
+        expires_at=datetime.utcnow() + timedelta(days=7),
     )
     db_session.add(invitation)
     db_session.commit()
@@ -239,7 +229,7 @@ def test_revoke_invitation(client, platform_admin_token, db_session):
 
     response = client.delete(
         f"/invitations/{invitation_id}",
-        headers={"Authorization": f"Bearer {platform_admin_token}"}
+        headers={"Authorization": f"Bearer {platform_admin_token}"},
     )
     assert response.status_code == 200
     assert "revoked successfully" in response.json()["message"]
@@ -249,7 +239,9 @@ def test_revoke_invitation(client, platform_admin_token, db_session):
     assert invitation.status == InvitationStatus.REVOKED
 
 
-def test_revoke_invitation_non_platform_admin(client, tenant_admin_token, db_session):
+def test_revoke_invitation_non_platform_admin(
+    client, tenant_admin_token, db_session
+):
     """Test that non-Platform Admin cannot revoke invitations"""
     invitation = Invitation(
         email="test@example.com",
@@ -257,19 +249,21 @@ def test_revoke_invitation_non_platform_admin(client, tenant_admin_token, db_ses
         token="testtoken123",
         status=InvitationStatus.PENDING,
         invited_by_email="admin@example.com",
-        expires_at=datetime.utcnow() + timedelta(days=7)
+        expires_at=datetime.utcnow() + timedelta(days=7),
     )
     db_session.add(invitation)
     db_session.commit()
 
     response = client.delete(
         f"/invitations/{invitation.id}",
-        headers={"Authorization": f"Bearer {tenant_admin_token}"}
+        headers={"Authorization": f"Bearer {tenant_admin_token}"},
     )
     assert response.status_code == 403
 
 
-def test_revoke_invitation_already_accepted(client, platform_admin_token, db_session):
+def test_revoke_invitation_already_accepted(
+    client, platform_admin_token, db_session
+):
     """Test that accepted invitations cannot be revoked"""
     invitation = Invitation(
         email="accepted@example.com",
@@ -278,14 +272,132 @@ def test_revoke_invitation_already_accepted(client, platform_admin_token, db_ses
         status=InvitationStatus.ACCEPTED,
         invited_by_email="admin@example.com",
         expires_at=datetime.utcnow() + timedelta(days=7),
-        accepted_at=datetime.utcnow()
+        accepted_at=datetime.utcnow(),
     )
     db_session.add(invitation)
     db_session.commit()
 
     response = client.delete(
         f"/invitations/{invitation.id}",
-        headers={"Authorization": f"Bearer {platform_admin_token}"}
+        headers={"Authorization": f"Bearer {platform_admin_token}"},
     )
     assert response.status_code == 400
     assert "Cannot revoke" in response.json()["detail"]
+
+
+def test_accept_team_member_invitation_with_role_and_tenant(
+    client, db_session
+):
+    """Test accepting an invitation that has a role and tenant (team member flow)"""
+    tenant = Tenant(name="Team Tenant", slug="team")
+    db_session.add(tenant)
+    db_session.commit()
+
+    invitation = Invitation(
+        email="teammember@example.com",
+        full_name="Team Member",
+        token="teamtoken123",
+        status=InvitationStatus.PENDING,
+        invited_by_email="admin@tenant.com",
+        role="sales_engineer",
+        tenant_id=tenant.id,
+        expires_at=datetime.utcnow() + timedelta(days=7),
+    )
+    db_session.add(invitation)
+    db_session.commit()
+
+    response = client.post(
+        "/invitations/accept",
+        json={
+            "token": "teamtoken123",
+            "password": "securepassword123",
+        },
+    )
+    assert response.status_code == 201
+    assert "created successfully" in response.json()["message"]
+
+    # Verify user was created with the correct role and tenant
+    user = (
+        db_session.query(User)
+        .filter(User.email == "teammember@example.com")
+        .first()
+    )
+    assert user is not None
+    assert user.role == UserRole.SALES_ENGINEER
+    assert user.tenant_id == tenant.id
+
+    # Verify user_tenant_role was created
+    utr = (
+        db_session.query(UserTenantRole)
+        .filter(
+            UserTenantRole.user_id == user.id,
+            UserTenantRole.tenant_id == tenant.id,
+        )
+        .first()
+    )
+    assert utr is not None
+    assert utr.role == UserRole.SALES_ENGINEER
+    assert utr.is_default is True
+
+
+def test_validate_team_member_invitation_shows_role_and_tenant(
+    client, db_session
+):
+    """Test that validating a team member invitation returns role and tenant info"""
+    tenant = Tenant(name="Validate Tenant", slug="validate")
+    db_session.add(tenant)
+    db_session.commit()
+
+    invitation = Invitation(
+        email="validate@example.com",
+        full_name="Validate User",
+        token="validateteamtoken",
+        status=InvitationStatus.PENDING,
+        invited_by_email="admin@tenant.com",
+        role="administrator",
+        tenant_id=tenant.id,
+        expires_at=datetime.utcnow() + timedelta(days=7),
+    )
+    db_session.add(invitation)
+    db_session.commit()
+
+    response = client.get("/invitations/validate/validateteamtoken")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["email"] == "validate@example.com"
+    assert data["role"] == "administrator"
+    assert data["tenant_name"] == "Validate Tenant"
+
+
+def test_accept_invitation_without_role_defaults_to_platform_admin(
+    client, db_session
+):
+    """Test that invitations without a role default to platform_admin (backward compat)"""
+    invitation = Invitation(
+        email="legacy@example.com",
+        full_name="Legacy Admin",
+        token="legacytoken123",
+        status=InvitationStatus.PENDING,
+        invited_by_email="admin@example.com",
+        expires_at=datetime.utcnow() + timedelta(days=7),
+    )
+    db_session.add(invitation)
+    db_session.commit()
+
+    response = client.post(
+        "/invitations/accept",
+        json={
+            "token": "legacytoken123",
+            "password": "securepassword123",
+        },
+    )
+    assert response.status_code == 201
+
+    user = (
+        db_session.query(User)
+        .filter(User.email == "legacy@example.com")
+        .first()
+    )
+    assert user is not None
+    assert user.role == UserRole.PLATFORM_ADMIN
+    assert user.tenant_id is None

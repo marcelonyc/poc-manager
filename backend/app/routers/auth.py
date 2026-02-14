@@ -30,7 +30,29 @@ router = APIRouter(prefix="/auth", tags=["Authentication"])
 def login(login_data: LoginRequest, db: Session = Depends(get_db)):
     """
     Authenticate user and return tenant selection options.
-    If user has multiple tenants, they need to select one before getting a token.
+
+    Purpose: Initial login endpoint that validates credentials and returns available tenants.
+    For Platform Admins (no tenant context), returns immediate access token. For multi-tenant users,
+    returns list of available tenants and requires tenant selection before full access.
+
+    Args:
+        login_data: LoginRequest object containing email and password
+            - email (str): User email address
+            - password (str): User password (plaintext, hashed upon verification)
+
+    Returns:
+        TenantSelectionResponse containing:
+            - user_id (int): User identifier
+            - email (str): User email
+            - full_name (str): User full name
+            - tenants (List[TenantOption]): Available tenant options
+            - requires_selection (bool): True if user has multiple tenants
+            - access_token (str): JWT token for Platform Admins or single-tenant users
+            - token_type (str): bearer
+
+    Raises:
+        401 Unauthorized: Invalid email or password
+        403 Forbidden: User account is inactive, blocked, or has no tenant associations
     """
     user = db.query(User).filter(User.email == login_data.email).first()
 
@@ -130,8 +152,21 @@ def login(login_data: LoginRequest, db: Session = Depends(get_db)):
 @router.post("/select-tenant", response_model=TokenWithTenant)
 def select_tenant(request: SelectTenantRequest, db: Session = Depends(get_db)):
     """
-    After login, select a tenant and receive an access token with tenant context.
-    Requires re-authentication for security.
+    Select a tenant and receive access token with tenant context.
+
+    Purpose: Used after login when user has multiple tenants. Requires re-authentication
+    for security, then returns an access token scoped to the specified tenant.
+
+    Args:
+        request: SelectTenantRequest object containing email, password, and tenant_id
+
+    Returns:
+        TokenWithTenant containing access_token (JWT scoped to selected tenant),
+        tenant details, and user information
+
+    Raises:
+        401 Unauthorized: Invalid email or password
+        403 Forbidden: User not associated with tenant, user inactive in tenant, or tenant inactive
     """
     # Re-authenticate user
     user = db.query(User).filter(User.email == request.email).first()
@@ -210,7 +245,20 @@ def switch_tenant(
 ):
     """
     Switch to a different tenant during an active session.
-    Returns a new token with the new tenant context.
+
+    Purpose: Allows authenticated user to switch active tenant context without logging out.
+    Returns a new access token scoped to the selected tenant.
+
+    Args:
+        switch_request: TenantSwitchRequest containing tenant_id to switch to
+
+    Returns:
+        TokenWithTenant with access_token scoped to new tenant and updated tenant context
+
+    Requires: Valid authentication token
+
+    Raises:
+        403 Forbidden: User not associated with tenant or tenant inactive
     """
     # Find the tenant role association
     tenant_role = (
@@ -281,7 +329,18 @@ def get_current_user_info(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Get current user information including all tenant associations"""
+    """
+    Get current user information including all tenant associations.
+
+    Purpose: Retrieve authenticated user's profile and list all tenants they have access to.
+    Useful for initializing UI and determining available navigation options.
+
+    Returns:
+        Dict with user ID, email, full name, active status, current tenant context,
+        and list of all available tenant associations with roles
+
+    Requires: Valid authentication token
+    """
     # Get current tenant context from token
     current_tenant_id = getattr(current_user, "_current_tenant_id", None)
     current_role = getattr(current_user, "_current_role", None)
@@ -327,7 +386,22 @@ def change_password(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Change user password"""
+    """
+    Change user password.
+
+    Purpose: Allow authenticated user to change their password by providing old and new passwords.
+
+    Args:
+        password_data: PasswordChange object with old_password and new_password
+
+    Returns:
+        Dict with message: Password changed successfully
+
+    Requires: Valid authentication token
+
+    Raises:
+        400 Bad Request: Incorrect old password
+    """
     if not verify_password(
         password_data.old_password, current_user.hashed_password
     ):
@@ -349,7 +423,18 @@ def refresh_token(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Refresh access token, maintaining current tenant context"""
+    """
+    Refresh access token, maintaining current tenant context.
+
+    Purpose: Extend session by issuing a new token with the same tenant context and permissions.
+    Useful for keeping sessions alive without requiring user to re-authenticate.
+
+    Returns:
+        TokenWithTenant with refreshed access token and extended expiration
+
+    Requires: Valid authentication token
+    """
+
     current_tenant_id = getattr(current_user, "_current_tenant_id", None)
     current_role = getattr(current_user, "_current_role", None)
 

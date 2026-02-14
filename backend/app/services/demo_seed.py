@@ -1,7 +1,9 @@
 """Dummy data seeding service for demo accounts"""
+
 from sqlalchemy.orm import Session
 from datetime import datetime, timedelta, timezone
 from app.models.user import User, UserRole
+from app.models.user_tenant_role import UserTenantRole
 from app.models.task import Task, TaskGroup, POCTask, POCTaskGroup, TaskStatus
 from app.models.poc import POC, POCStatus, POCParticipant
 from app.models.success_criteria import SuccessCriteria
@@ -9,109 +11,138 @@ from app.models.product import Product
 from app.auth import get_password_hash
 
 
+def _create_demo_user(db, email, full_name, role, tenant_id):
+    """Create a demo user with its corresponding UserTenantRole."""
+    user = User(
+        email=email,
+        full_name=full_name,
+        hashed_password=get_password_hash("demo1234"),
+        role=role,
+        tenant_id=tenant_id,
+        is_active=True,
+        is_demo=True,
+    )
+    db.add(user)
+    db.flush()
+
+    utr = UserTenantRole(
+        user_id=user.id,
+        tenant_id=tenant_id,
+        role=role,
+        is_default=True,
+        is_active=True,
+    )
+    db.add(utr)
+    db.flush()
+
+    return user
+
+
 def seed_demo_account(db: Session, tenant_id: int, tenant_admin_user_id: int):
     """Seed dummy data for a demo account"""
-    
+
     # Create additional users
     users = []
-    
+
     # Tenant Admin (already exists, just get reference)
-    tenant_admin = db.query(User).filter(User.id == tenant_admin_user_id).first()
+    tenant_admin = (
+        db.query(User).filter(User.id == tenant_admin_user_id).first()
+    )
     users.append(tenant_admin)
-    
+
+    # Ensure tenant admin has a UserTenantRole (may not exist if created before multi-tenant)
+    existing_utr = (
+        db.query(UserTenantRole)
+        .filter(
+            UserTenantRole.user_id == tenant_admin_user_id,
+            UserTenantRole.tenant_id == tenant_id,
+        )
+        .first()
+    )
+    if not existing_utr:
+        utr = UserTenantRole(
+            user_id=tenant_admin_user_id,
+            tenant_id=tenant_id,
+            role=tenant_admin.role,
+            is_default=True,
+            is_active=True,
+        )
+        db.add(utr)
+        db.flush()
+
     # Create Administrator
-    admin = User(
-        email=f"admin.demo{tenant_id}@example.com",
-        full_name="Sarah Administrator",
-        hashed_password=get_password_hash("demo1234"),
-        role=UserRole.ADMINISTRATOR,
-        tenant_id=tenant_id,
-        is_active=True,
-        is_demo=True,
+    admin = _create_demo_user(
+        db,
+        f"admin.demo{tenant_id}@example.com",
+        "Sarah Administrator",
+        UserRole.ADMINISTRATOR,
+        tenant_id,
     )
-    db.add(admin)
-    db.flush()
     users.append(admin)
-    
+
     # Create Sales Engineers
-    se1 = User(
-        email=f"sales1.demo{tenant_id}@example.com",
-        full_name="John Sales Engineer",
-        hashed_password=get_password_hash("demo1234"),
-        role=UserRole.SALES_ENGINEER,
-        tenant_id=tenant_id,
-        is_active=True,
-        is_demo=True,
+    se1 = _create_demo_user(
+        db,
+        f"sales1.demo{tenant_id}@example.com",
+        "John Sales Engineer",
+        UserRole.SALES_ENGINEER,
+        tenant_id,
     )
-    db.add(se1)
-    db.flush()
     users.append(se1)
-    
-    se2 = User(
-        email=f"sales2.demo{tenant_id}@example.com",
-        full_name="Maria Sales Engineer",
-        hashed_password=get_password_hash("demo1234"),
-        role=UserRole.SALES_ENGINEER,
-        tenant_id=tenant_id,
-        is_active=True,
-        is_demo=True,
+
+    se2 = _create_demo_user(
+        db,
+        f"sales2.demo{tenant_id}@example.com",
+        "Maria Sales Engineer",
+        UserRole.SALES_ENGINEER,
+        tenant_id,
     )
-    db.add(se2)
-    db.flush()
     users.append(se2)
-    
+
     # Create Customer users
-    customer1 = User(
-        email=f"customer1.demo{tenant_id}@example.com",
-        full_name="Alice Customer",
-        hashed_password=get_password_hash("demo1234"),
-        role=UserRole.CUSTOMER,
-        tenant_id=tenant_id,
-        is_active=True,
-        is_demo=True,
+    customer1 = _create_demo_user(
+        db,
+        f"customer1.demo{tenant_id}@example.com",
+        "Alice Customer",
+        UserRole.CUSTOMER,
+        tenant_id,
     )
-    db.add(customer1)
-    db.flush()
     users.append(customer1)
-    
-    customer2 = User(
-        email=f"customer2.demo{tenant_id}@example.com",
-        full_name="Bob Customer",
-        hashed_password=get_password_hash("demo1234"),
-        role=UserRole.CUSTOMER,
-        tenant_id=tenant_id,
-        is_active=True,
-        is_demo=True,
+
+    customer2 = _create_demo_user(
+        db,
+        f"customer2.demo{tenant_id}@example.com",
+        "Bob Customer",
+        UserRole.CUSTOMER,
+        tenant_id,
     )
-    db.add(customer2)
-    db.flush()
     users.append(customer2)
-    
+
     # Create 5 task templates
     tasks = []
     task_data = [
         {
             "title": "Initial Requirements Gathering",
-            "description": "Schedule and conduct kickoff meeting to understand customer needs, pain points, and success criteria."
+            "description": "Schedule and conduct kickoff meeting to understand customer needs, pain points, and success criteria.",
         },
         {
             "title": "Environment Setup",
-            "description": "Configure development/staging environment with necessary access, credentials, and initial data."
+            "description": "Configure development/staging environment with necessary access, credentials, and initial data.",
         },
         {
             "title": "Product Demo",
-            "description": "Conduct live demonstration of key product features aligned with customer requirements."
+            "description": "Conduct live demonstration of key product features aligned with customer requirements.",
         },
         {
             "title": "Integration Testing",
-            "description": "Test integration points with customer systems, APIs, and data sources."
+            "description": "Test integration points with customer systems, APIs, and data sources.",
         },
         {
             "title": "Final Presentation",
-            "description": "Present POC results, findings, and recommendations to stakeholders."
+            "description": "Present POC results, findings, and recommendations to stakeholders.",
         },
     ]
-    
+
     for task_info in task_data:
         task = Task(
             title=task_info["title"],
@@ -123,10 +154,10 @@ def seed_demo_account(db: Session, tenant_id: int, tenant_admin_user_id: int):
         db.add(task)
         db.flush()
         tasks.append(task)
-    
+
     # Create 2 task group templates
     task_groups = []
-    
+
     tg1 = TaskGroup(
         title="Discovery & Planning Phase",
         description="Initial phase to understand requirements and plan the POC approach.",
@@ -137,7 +168,7 @@ def seed_demo_account(db: Session, tenant_id: int, tenant_admin_user_id: int):
     db.add(tg1)
     db.flush()
     task_groups.append(tg1)
-    
+
     tg2 = TaskGroup(
         title="Technical Implementation",
         description="Core implementation and testing of the solution.",
@@ -148,7 +179,7 @@ def seed_demo_account(db: Session, tenant_id: int, tenant_admin_user_id: int):
     db.add(tg2)
     db.flush()
     task_groups.append(tg2)
-    
+
     # Create Products
     products = []
     product1 = Product(
@@ -157,26 +188,26 @@ def seed_demo_account(db: Session, tenant_id: int, tenant_admin_user_id: int):
     )
     db.add(product1)
     products.append(product1)
-    
+
     product2 = Product(
         name="Analytics Dashboard Suite",
         tenant_id=tenant_id,
     )
     db.add(product2)
     products.append(product2)
-    
+
     product3 = Product(
         name="Real-Time Data Sync",
         tenant_id=tenant_id,
     )
     db.add(product3)
     products.append(product3)
-    
+
     db.flush()
-    
+
     # Create 2 POCs with success criteria
     pocs = []
-    
+
     # POC 1 - Active
     poc1 = POC(
         title="E-Commerce Platform Integration",
@@ -191,17 +222,21 @@ def seed_demo_account(db: Session, tenant_id: int, tenant_admin_user_id: int):
     db.add(poc1)
     db.flush()
     # Associate products with POC1
-    poc1.products.extend([product1, product3])  # API Integration + Real-Time Data Sync
+    poc1.products.extend(
+        [product1, product3]
+    )  # API Integration + Real-Time Data Sync
     pocs.append(poc1)
-    
+
     # Add participants to POC1
     poc1_participants = [
         POCParticipant(poc_id=poc1.id, user_id=se1.id, is_sales_engineer=True),
-        POCParticipant(poc_id=poc1.id, user_id=customer1.id, is_sales_engineer=False),
+        POCParticipant(
+            poc_id=poc1.id, user_id=customer1.id, is_sales_engineer=False
+        ),
     ]
     for participant in poc1_participants:
         db.add(participant)
-    
+
     # Add tasks to POC1
     poc1_tasks = [
         POCTask(
@@ -242,7 +277,7 @@ def seed_demo_account(db: Session, tenant_id: int, tenant_admin_user_id: int):
     ]
     for task in poc1_tasks:
         db.add(task)
-    
+
     # Add task group to POC1
     poc1_task_group = POCTaskGroup(
         poc_id=poc1.id,
@@ -254,7 +289,7 @@ def seed_demo_account(db: Session, tenant_id: int, tenant_admin_user_id: int):
         sort_order=0,
     )
     db.add(poc1_task_group)
-    
+
     # Success criteria for POC1
     poc1_criteria = [
         SuccessCriteria(
@@ -284,7 +319,7 @@ def seed_demo_account(db: Session, tenant_id: int, tenant_admin_user_id: int):
     ]
     for criteria in poc1_criteria:
         db.add(criteria)
-    
+
     # POC 2 - Completed
     poc2 = POC(
         title="Customer Analytics Dashboard",
@@ -301,15 +336,17 @@ def seed_demo_account(db: Session, tenant_id: int, tenant_admin_user_id: int):
     # Associate products with POC2
     poc2.products.append(product2)  # Analytics Dashboard Suite
     pocs.append(poc2)
-    
+
     # Add participants to POC2
     poc2_participants = [
         POCParticipant(poc_id=poc2.id, user_id=se2.id, is_sales_engineer=True),
-        POCParticipant(poc_id=poc2.id, user_id=customer2.id, is_sales_engineer=False),
+        POCParticipant(
+            poc_id=poc2.id, user_id=customer2.id, is_sales_engineer=False
+        ),
     ]
     for participant in poc2_participants:
         db.add(participant)
-    
+
     # Add tasks to POC2 (all completed)
     poc2_tasks = [
         POCTask(
@@ -351,7 +388,7 @@ def seed_demo_account(db: Session, tenant_id: int, tenant_admin_user_id: int):
     ]
     for task in poc2_tasks:
         db.add(task)
-    
+
     # Add task groups to POC2 (both completed)
     poc2_task_group1 = POCTaskGroup(
         poc_id=poc2.id,
@@ -363,7 +400,7 @@ def seed_demo_account(db: Session, tenant_id: int, tenant_admin_user_id: int):
         sort_order=0,
     )
     db.add(poc2_task_group1)
-    
+
     poc2_task_group2 = POCTaskGroup(
         poc_id=poc2.id,
         task_group_id=task_groups[1].id,
@@ -374,7 +411,7 @@ def seed_demo_account(db: Session, tenant_id: int, tenant_admin_user_id: int):
         sort_order=1,
     )
     db.add(poc2_task_group2)
-    
+
     # Success criteria for POC2 (all completed)
     poc2_criteria = [
         SuccessCriteria(
@@ -404,13 +441,13 @@ def seed_demo_account(db: Session, tenant_id: int, tenant_admin_user_id: int):
     ]
     for criteria in poc2_criteria:
         db.add(criteria)
-    
+
     db.commit()
-    
+
     return {
         "users_created": len(users),
         "tasks_created": len(tasks),
         "task_groups_created": len(task_groups),
         "pocs_created": len(pocs),
-        "message": "Demo account seeded successfully"
+        "message": "Demo account seeded successfully",
     }

@@ -65,8 +65,9 @@ nav:
     - Tenant Management: platform-admin/tenants.md
   - Tenant Admin:
     - User Management: tenant-admin/users.md
-    - Tenant Settings: tenant-admin/settings.md
-    - Public Links: tenant-admin/public-links.md
+    - Tenant Settings: tenant-admin/settings.md    
+    - AI Assistant Configuration: tenant-admin/ai-assistant.md    
+    - Public Links: tenant-admin/public-share-links.md
   - Administrator:
     - Task Templates: administrator/task-templates.md
     - Creating POCs: administrator/creating-pocs.md
@@ -83,7 +84,9 @@ nav:
     - Task Completion: customer/task-completion.md
   - Features:
     - Dashboard: features/dashboard.md
+    - AI Assistant: features/ai-assistant.md
     - Comments System: features/comments.md
     - Document Generation: features/documents.md
     - Resources: features/resources.md
+    - Task Assignment: features/task-assignment.md
     - Public Links: features/public-links.md

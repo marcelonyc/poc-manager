@@ -85,7 +85,31 @@ def list_success_criteria(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """List success criteria for a POC"""
+    """
+    List all success criteria for a POC.
+
+    Returns the defined success criteria for a POC, sorted by sort_order.
+    Success criteria define the measurable goals that determine POC success.
+
+    Route: GET /pocs/{poc_id}/success-criteria
+
+    Path parameters:
+        poc_id (int): The unique identifier of the POC.
+
+    Returns:
+        List of success criteria objects, each containing:
+            - id (int): Unique criteria identifier.
+            - poc_id (int): Parent POC identifier.
+            - title (str): Criteria name.
+            - description (str | null): Detailed criteria description.
+            - target_value (str | null): Expected target or threshold.
+            - sort_order (int): Display order.
+            - created_at (datetime): Creation timestamp.
+            - updated_at (datetime | null): Last update timestamp.
+
+    Errors:
+        401 Unauthorized: Missing or invalid authentication token.
+    """
     criteria = (
         db.query(SuccessCriteria)
         .filter(SuccessCriteria.poc_id == poc_id)
@@ -120,7 +144,7 @@ def update_success_criteria(
             detail="Success criteria not found",
         )
 
-    update_data = criteria_data.dict(exclude_unset=True)
+    update_data = criteria_data.model_dump(exclude_unset=True)
     for field, value in update_data.items():
         setattr(criteria, field, value)
 
@@ -265,7 +289,44 @@ def list_comments(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """List comments for a POC task or task group"""
+    """
+    List comments for a POC task or task group.
+
+    Returns comments filtered by either task_id or task_group_id (exactly one
+    must be provided). Internal comments are automatically hidden from customer
+    users. Results are sorted by creation date (newest first) and include
+    author details.
+
+    Route: GET /pocs/{poc_id}/comments?task_id=&task_group_id=
+
+    Path parameters:
+        poc_id (int): The unique identifier of the POC.
+
+    Query parameters:
+        task_id (int, optional): Filter by POC task ID. Mutually exclusive with task_group_id.
+        task_group_id (int, optional): Filter by POC task group ID. Mutually exclusive with task_id.
+
+    Returns:
+        List of comment objects, each containing:
+            - id (int): Unique comment identifier.
+            - subject (str): Comment subject line.
+            - content (str): Comment body text.
+            - user_id (int | null): Author user ID (null for guest comments).
+            - poc_id (int): Parent POC identifier.
+            - poc_task_id (int | null): Associated task ID.
+            - poc_task_group_id (int | null): Associated task group ID.
+            - is_internal (bool): Whether this is a vendor-only internal comment.
+            - created_at (datetime): Creation timestamp.
+            - updated_at (datetime | null): Last edit timestamp.
+            - guest_name (str | null): Guest commenter name.
+            - guest_email (str | null): Guest commenter email.
+            - user (object): Author info with id, email, and full_name.
+
+    Errors:
+        400 Bad Request: Neither or both task_id and task_group_id provided.
+        404 Not Found: POC, task, or task group not found.
+        401 Unauthorized: Missing or invalid authentication token.
+    """
     # Validate that at least one task or task group is specified
     if not task_id and not task_group_id:
         raise HTTPException(
@@ -389,7 +450,7 @@ def update_comment(
             status_code=status.HTTP_403_FORBIDDEN, detail="Access denied"
         )
 
-    update_data = comment_data.dict(exclude_unset=True)
+    update_data = comment_data.model_dump(exclude_unset=True)
     for field, value in update_data.items():
         setattr(comment, field, value)
 
@@ -476,7 +537,34 @@ def list_resources(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """List resources for a POC"""
+    """
+    List all resources attached to a POC.
+
+    Returns POC-level resources (links, code snippets, text blocks, or files)
+    sorted by sort_order. These are resources associated with the POC itself,
+    not with individual tasks or task groups.
+
+    Route: GET /pocs/{poc_id}/resources
+
+    Path parameters:
+        poc_id (int): The unique identifier of the POC.
+
+    Returns:
+        List of resource objects, each containing:
+            - id (int): Unique resource identifier.
+            - poc_id (int): Parent POC identifier.
+            - title (str): Resource name.
+            - description (str | null): Resource description.
+            - resource_type (str): Type — one of "link", "code", "text", "file".
+            - content (str): Resource content (URL, snippet, text, or file path).
+            - success_criteria_id (int | null): Linked success criteria, if any.
+            - sort_order (int): Display order.
+            - created_at (datetime): Creation timestamp.
+            - updated_at (datetime | null): Last update timestamp.
+
+    Errors:
+        401 Unauthorized: Missing or invalid authentication token.
+    """
     resources = (
         db.query(Resource)
         .filter(Resource.poc_id == poc_id)
@@ -507,7 +595,7 @@ def update_resource(
             status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found"
         )
 
-    update_data = resource_data.dict(exclude_unset=True)
+    update_data = resource_data.model_dump(exclude_unset=True)
     for field, value in update_data.items():
         setattr(resource, field, value)
 
@@ -599,7 +687,34 @@ def list_task_resources(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """List resources for a POC task"""
+    """
+    List resources attached to a specific POC task.
+
+    Returns resources (links, code, text, files) associated with a particular
+    task within a POC, sorted by sort_order.
+
+    Route: GET /pocs/{poc_id}/tasks/{task_id}/resources
+
+    Path parameters:
+        poc_id (int): The unique identifier of the POC.
+        task_id (int): The unique identifier of the POC task.
+
+    Returns:
+        List of resource objects, each containing:
+            - id (int): Unique resource identifier.
+            - poc_task_id (int): Parent task identifier.
+            - title (str): Resource name.
+            - description (str | null): Resource description.
+            - resource_type (str): Type — one of "link", "code", "text", "file".
+            - content (str): Resource content.
+            - success_criteria_id (int | null): Linked success criteria, if any.
+            - sort_order (int): Display order.
+            - created_at (datetime): Creation timestamp.
+            - updated_at (datetime | null): Last update timestamp.
+
+    Errors:
+        401 Unauthorized: Missing or invalid authentication token.
+    """
     resources = (
         db.query(Resource)
         .filter(Resource.poc_task_id == task_id)
@@ -632,7 +747,7 @@ def update_task_resource(
             status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found"
         )
 
-    update_data = resource_data.dict(exclude_unset=True)
+    update_data = resource_data.model_dump(exclude_unset=True)
     for field, value in update_data.items():
         setattr(resource, field, value)
 
@@ -726,7 +841,34 @@ def list_task_group_resources(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """List resources for a POC task group"""
+    """
+    List resources attached to a specific POC task group.
+
+    Returns resources (links, code, text, files) associated with a particular
+    task group within a POC, sorted by sort_order.
+
+    Route: GET /pocs/{poc_id}/task-groups/{group_id}/resources
+
+    Path parameters:
+        poc_id (int): The unique identifier of the POC.
+        group_id (int): The unique identifier of the POC task group.
+
+    Returns:
+        List of resource objects, each containing:
+            - id (int): Unique resource identifier.
+            - poc_task_group_id (int): Parent task group identifier.
+            - title (str): Resource name.
+            - description (str | null): Resource description.
+            - resource_type (str): Type — one of "link", "code", "text", "file".
+            - content (str): Resource content.
+            - success_criteria_id (int | null): Linked success criteria, if any.
+            - sort_order (int): Display order.
+            - created_at (datetime): Creation timestamp.
+            - updated_at (datetime | null): Last update timestamp.
+
+    Errors:
+        401 Unauthorized: Missing or invalid authentication token.
+    """
     resources = (
         db.query(Resource)
         .filter(Resource.poc_task_group_id == group_id)
@@ -761,7 +903,7 @@ def update_task_group_resource(
             status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found"
         )
 
-    update_data = resource_data.dict(exclude_unset=True)
+    update_data = resource_data.model_dump(exclude_unset=True)
     for field, value in update_data.items():
         setattr(resource, field, value)
 
@@ -803,7 +945,36 @@ def list_participants(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """List all participants and pending invitations for a POC"""
+    """
+    List all participants and pending invitations for a POC.
+
+    Returns both accepted participants and outstanding invitations (pending,
+    expired, failed) in a single list. This gives a unified view of everyone
+    involved or invited to the POC engagement.
+
+    Route: GET /pocs/{poc_id}/participants
+
+    Path parameters:
+        poc_id (int): The unique identifier of the POC.
+
+    Returns:
+        List of participant/invitation objects, each containing:
+            - id (int | null): Participant record ID (null for pending invitations).
+            - user_id (int | null): User ID (null for pending invitations).
+            - email (str): Participant or invitee email.
+            - full_name (str): Participant or invitee name.
+            - is_sales_engineer (bool): Whether participant is a sales engineer.
+            - is_customer (bool): Whether participant is a customer.
+            - joined_at (datetime | null): When the participant joined (null for invitations).
+            - status (str): One of "accepted", "pending", "expired", "failed".
+            - invitation_id (int | null): Invitation ID for pending invitations.
+            - invited_at (datetime, optional): When the invitation was sent.
+            - expires_at (datetime, optional): Invitation expiration time.
+            - resend_count (int, optional): Number of times invitation was resent.
+
+    Errors:
+        401 Unauthorized: Missing or invalid authentication token.
+    """
     from app.models.poc import POCParticipant
 
     # Get existing participants

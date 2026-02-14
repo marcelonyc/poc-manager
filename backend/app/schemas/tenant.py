@@ -1,6 +1,6 @@
 """Tenant schemas"""
 
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, ConfigDict
 from typing import Optional
 from datetime import datetime
 
@@ -36,6 +36,7 @@ class TenantUpdate(BaseModel):
     tenant_admin_limit: Optional[int] = None
     administrator_limit: Optional[int] = None
     sales_engineer_limit: Optional[int] = None
+    account_executive_limit: Optional[int] = None
     customer_limit: Optional[int] = None
     is_active: Optional[bool] = None
     # Email configuration
@@ -45,6 +46,9 @@ class TenantUpdate(BaseModel):
     custom_mail_password: Optional[str] = None
     custom_mail_from: Optional[str] = None
     custom_mail_tls: Optional[bool] = None
+    # AI Assistant
+    ai_assistant_enabled: Optional[bool] = None
+    ollama_api_key: Optional[str] = None
 
 
 class TenantEmailConfig(BaseModel):
@@ -67,12 +71,15 @@ class TestEmailRequest(BaseModel):
 class Tenant(TenantBase):
     """Schema for tenant response"""
 
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     logo_url: Optional[str] = None
     is_demo: bool = False
     tenant_admin_limit: int
     administrator_limit: int
     sales_engineer_limit: int
+    account_executive_limit: int
     customer_limit: int
     is_active: bool
     created_at: datetime
@@ -82,6 +89,7 @@ class Tenant(TenantBase):
     custom_mail_port: Optional[int] = None
     custom_mail_from: Optional[str] = None
     custom_mail_tls: Optional[bool] = None
-
-    class Config:
-        from_attributes = True
+    # AI Assistant
+    ai_assistant_enabled: bool = False
+    has_ollama_api_key: bool = False
+    ollama_model: Optional[str] = None

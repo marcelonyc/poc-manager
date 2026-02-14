@@ -4,6 +4,7 @@ from sqlalchemy import Column, Integer, String, Boolean, DateTime, Text
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from app.database import Base
+from app.utils.encrypted_field import register_encrypted_field
 
 
 class Tenant(Base):
@@ -36,12 +37,17 @@ class Tenant(Base):
     tenant_admin_limit = Column(Integer, default=5)
     administrator_limit = Column(Integer, default=10)
     sales_engineer_limit = Column(Integer, default=50)
+    account_executive_limit = Column(Integer, default=50)
     customer_limit = Column(Integer, default=500)
 
     # Demo account fields
     is_demo = Column(Boolean, default=False)
     sales_engineers_count = Column(Integer, nullable=True)
     pocs_per_quarter = Column(Integer, nullable=True)
+
+    # AI Assistant
+    ai_assistant_enabled = Column(Boolean, default=False)
+    ollama_api_key = Column(String, nullable=True)
 
     is_active = Column(Boolean, default=True)
 
@@ -66,3 +72,9 @@ class Tenant(Base):
 
     def __repr__(self):
         return f"<Tenant {self.name}>"
+
+
+# Register encrypted fields
+register_encrypted_field(Tenant, "custom_mail_password")
+register_encrypted_field(Tenant, "custom_mail_username")
+register_encrypted_field(Tenant, "ollama_api_key")

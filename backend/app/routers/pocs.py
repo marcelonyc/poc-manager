@@ -62,7 +62,23 @@ def create_poc(
     current_user: User = Depends(require_sales_engineer),
     tenant_id: int = Depends(get_current_tenant_id),
 ):
-    """Create a new POC"""
+    """
+    Create a new Proof of Concept (POC).
+
+    Purpose: Initialize a new POC with basic information, timeline, and associated products.
+    Creator automatically becomes a sales engineer participant.
+
+    Args:
+        poc_data: POCCreate with title, description, customer company, dates, and product IDs
+
+    Returns:
+        POCSchema with created POC in DRAFT status
+
+    Requires: Sales Engineer or Administrator role
+
+    Raises:
+        403 Forbidden: Insufficient permissions
+    """
     # Check demo limits
     check_demo_poc_limit(db, tenant_id, current_user.tenant)
 
@@ -115,7 +131,41 @@ def list_pocs(
     current_user: User = Depends(get_current_user),
     tenant_id: int = Depends(get_current_tenant_id),
 ):
-    """List POCs with optional filters"""
+    """
+    List POCs with optional filtering.
+
+    Returns a paginated list of Proof-of-Concept engagements. Results are
+    automatically scoped to the caller's tenant. Customers only see POCs
+    they participate in. Supports filtering by status, customer company name,
+    and participant name.
+
+    Route: GET /pocs/?skip=0&limit=100&status=&customer_name=&user_name=
+
+    Query parameters:
+        skip (int, default 0): Number of records to skip for pagination.
+        limit (int, default 100): Maximum number of records to return.
+        status (str, optional): Filter by POC status — one of "draft", "active", "completed", "archived".
+        customer_name (str, optional): Case-insensitive partial match on customer company name.
+        user_name (str, optional): Case-insensitive partial match on participant full name.
+
+    Returns:
+        List of POC objects, each containing:
+            - id (int): Unique POC identifier.
+            - title (str): POC title.
+            - description (str | null): POC description.
+            - tenant_id (int): Owning tenant ID.
+            - created_by (int): User ID of the creator.
+            - customer_company_name (str | null): Customer organization name.
+            - status (str): Current POC status.
+            - start_date (date | null): Planned start date.
+            - end_date (date | null): Planned end date.
+            - overall_success_score (float | null): Aggregate success metric.
+            - created_at (datetime): Creation timestamp.
+            - updated_at (datetime | null): Last modification timestamp.
+
+    Errors:
+        401 Unauthorized: Missing or invalid authentication token.
+    """
     query = db.query(POC)
 
     # Filter by tenant for non-platform admins
@@ -156,7 +206,45 @@ def get_poc(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Get POC details"""
+    """
+    Get detailed POC information including participants and entity counts.
+
+    Retrieves comprehensive details for a single POC, including participant
+    list, and counts of success criteria, tasks, and task groups. Access is
+    granted to tenant members and POC participants.
+
+    Route: GET /pocs/{poc_id}
+
+    Path parameters:
+        poc_id (int): The unique identifier of the POC.
+
+    Returns:
+        POC detail object containing:
+            - id (int): Unique POC identifier.
+            - title (str): POC title.
+            - description (str | null): POC description.
+            - tenant_id (int): Owning tenant ID.
+            - created_by (int): Creator user ID.
+            - customer_company_name (str | null): Customer organization name.
+            - customer_logo_url (str | null): URL to customer logo.
+            - executive_summary (str | null): Executive summary text.
+            - objectives (str | null): POC objectives.
+            - start_date (date | null): Planned start date.
+            - end_date (date | null): Planned end date.
+            - status (str): Current status — "draft", "active", "completed", or "archived".
+            - overall_success_score (float | null): Aggregate success metric.
+            - created_at (datetime): Creation timestamp.
+            - updated_at (datetime | null): Last modification timestamp.
+            - participants (list): Each with user_id, is_sales_engineer, is_customer.
+            - success_criteria_count (int): Number of success criteria.
+            - tasks_count (int): Number of POC tasks.
+            - task_groups_count (int): Number of POC task groups.
+
+    Errors:
+        404 Not Found: POC does not exist.
+        403 Forbidden: Caller lacks tenant access and is not a POC participant.
+        401 Unauthorized: Missing or invalid authentication token.
+    """
     poc = db.query(POC).filter(POC.id == poc_id).first()
     if not poc:
         raise HTTPException(
@@ -210,7 +298,24 @@ def update_poc(
     current_user: User = Depends(require_sales_engineer),
     tenant_id: int = Depends(get_current_tenant_id),
 ):
-    """Update POC details"""
+    """
+    Update POC information.
+
+    Purpose: Modify POC details including title, description, dates, status, and associated products.
+
+    Args:
+        poc_id (int): POC identifier
+        poc_data: POCUpdate with fields to modify
+
+    Returns:
+        Updated POCSchema
+
+    Requires: Sales Engineer or Administrator
+
+    Raises:
+        404 Not Found: POC not found
+        403 Forbidden: Access denied
+    """
     poc = db.query(POC).filter(POC.id == poc_id).first()
     if not poc:
         raise HTTPException(
@@ -226,7 +331,7 @@ def update_poc(
         )
 
     # Update fields
-    update_data = poc_data.dict(exclude_unset=True)
+    update_data = poc_data.model_dump(exclude_unset=True)
 
     # Handle product_ids separately
     if "product_ids" in update_data:
@@ -259,7 +364,25 @@ async def add_participant(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_sales_engineer),
 ):
-    """Add a participant to a POC"""
+    """
+    Add a participant to a POC.
+
+    Purpose: Add existing user as participant or invite new user with automatic email notification.
+    Supports both internal team members and external customers.
+
+    Args:
+        poc_id (int): POC identifier
+        participant_data: POCParticipantAdd with either user_id or email+full_name for invitation
+
+    Returns:
+        Dict with success message and invitation details (if new invitation)
+
+    Requires: Sales Engineer role
+
+    Raises:
+        404 Not Found: POC or user not found
+        400 Bad Request: User already participant or pending invitation exists
+    """
     poc = db.query(POC).filter(POC.id == poc_id).first()
     if not poc:
         raise HTTPException(
@@ -404,7 +527,24 @@ def remove_participant(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_sales_engineer),
 ):
-    """Remove a participant from a POC"""
+    """
+    Remove a participant from a POC.
+
+    Purpose: Unassign user's participation in a POC, revoking their access.
+
+    Args:
+        poc_id (int): POC identifier
+        user_id (int): User to remove
+
+    Returns:
+        Dict with success message
+
+    Requires: Sales Engineer role
+
+    Raises:
+        404 Not Found: POC or participant not found
+        403 Forbidden: Access denied
+    """
     poc = db.query(POC).filter(POC.id == poc_id).first()
     if not poc:
         raise HTTPException(
@@ -445,7 +585,25 @@ def get_dashboard_stats(
     current_user: User = Depends(get_current_user),
     tenant_id: int = Depends(get_current_tenant_id),
 ):
-    """Get dashboard statistics for tenant users"""
+    """
+    Get tenant dashboard statistics.
+
+    Returns aggregate metrics for the caller's tenant, useful for populating
+    dashboard widgets. Counts POCs by status and breaks down team composition.
+
+    Route: GET /pocs/stats/dashboard
+
+    Returns:
+        Dict containing:
+            - active_pocs (int): Count of POCs with status "active".
+            - completed_pocs (int): Count of POCs with status "completed".
+            - in_progress_pocs (int): Count of POCs with status "draft" or "active".
+            - team_members (int): Non-customer users in the tenant.
+            - customers (int): Users with "customer" role in the tenant.
+
+    Errors:
+        401 Unauthorized: Missing or invalid authentication token.
+    """
     # Filter by tenant
     query_base = db.query(POC).filter(POC.tenant_id == tenant_id)
 
@@ -493,7 +651,23 @@ def archive_poc(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_sales_engineer),
 ):
-    """Archive a POC"""
+    """
+    Archive a POC.
+
+    Purpose: Mark POC as archived to hide from active lists while preserving data.
+
+    Args:
+        poc_id (int): POC identifier
+
+    Returns:
+        Dict with success message
+
+    Requires: Sales Engineer role
+
+    Raises:
+        404 Not Found: POC not found
+        403 Forbidden: Access denied
+    """
     poc = db.query(POC).filter(POC.id == poc_id).first()
     if not poc:
         raise HTTPException(
@@ -521,7 +695,32 @@ def generate_poc_document(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Generate a POC document in PDF or Markdown format"""
+    """
+    Generate and download a POC document as PDF or Markdown.
+
+    Exports the full POC including tasks, success criteria, resources, and
+    participants into a downloadable document. Both vendor team members and
+    customer participants can generate documents.
+
+    Route: GET /pocs/{poc_id}/generate-document?format=pdf
+
+    Path parameters:
+        poc_id (int): The unique identifier of the POC to export.
+
+    Query parameters:
+        format (str, default "pdf"): Output format — "pdf" or "markdown".
+
+    Returns:
+        FileResponse: Binary file download with Content-Disposition attachment header.
+            - PDF: application/pdf media type.
+            - Markdown: text/markdown media type.
+
+    Errors:
+        404 Not Found: POC does not exist.
+        403 Forbidden: Caller is not a tenant member or POC participant.
+        400 Bad Request: Invalid format value (must be "pdf" or "markdown").
+        401 Unauthorized: Missing or invalid authentication token.
+    """
     # Get POC with all relationships
     poc = db.query(POC).filter(POC.id == poc_id).first()
     if not poc:
@@ -590,7 +789,26 @@ async def upload_poc_logo(
     current_user: User = Depends(require_sales_engineer),
     tenant_id: int = Depends(get_current_tenant_id),
 ):
-    """Upload customer logo for POC (Sales Engineer/Admin only)"""
+    """
+    Upload customer logo image for POC.
+
+    Purpose: Store customer company logo for display in POC materials. Replaces existing logo.
+    Supported formats: JPEG, PNG, GIF, WebP (max 2MB).
+
+    Args:
+        poc_id (int): POC identifier
+        logo: Image file upload
+
+    Returns:
+        Dict with message and logo_url
+
+    Requires: Sales Engineer role
+
+    Raises:
+        404 Not Found: POC not found
+        400 Bad Request: Invalid format or file too large
+        403 Forbidden: Access denied
+    """
     poc = db.query(POC).filter(POC.id == poc_id).first()
     if not poc:
         raise HTTPException(
@@ -668,7 +886,23 @@ def delete_poc_logo(
     current_user: User = Depends(require_sales_engineer),
     tenant_id: int = Depends(get_current_tenant_id),
 ):
-    """Delete customer logo from POC (Sales Engineer/Admin only)"""
+    """
+    Delete customer logo from POC.
+
+    Purpose: Remove customer logo image associated with POC.
+
+    Args:
+        poc_id (int): POC identifier
+
+    Returns:
+        Dict with success message
+
+    Requires: Sales Engineer role
+
+    Raises:
+        404 Not Found: POC or logo not found
+        403 Forbidden: Access denied
+    """
     poc = db.query(POC).filter(POC.id == poc_id).first()
     if not poc:
         raise HTTPException(
@@ -718,7 +952,25 @@ def create_public_link(
     current_user: User = Depends(require_tenant_admin),
     tenant_id: int = Depends(get_current_tenant_id),
 ):
-    """Create a public link for a POC (Tenant Admin only)"""
+    """
+    Create a public shareable link for a POC.
+
+    Purpose: Generate a unique public link allowing unauthenticated access to POC content
+    (tasks, success criteria, resources, guest comments) without account creation.
+
+    Args:
+        poc_id (int): POC identifier
+
+    Returns:
+        POCPublicLinkDetail with access_token and access_url
+
+    Requires: Tenant Admin role
+
+    Raises:
+        404 Not Found: POC not found
+        400 Bad Request: Public link already exists
+        403 Forbidden: Access denied
+    """
     # Check if POC exists and belongs to the tenant
     poc = (
         db.query(POC)
@@ -780,7 +1032,32 @@ def get_public_link(
     current_user: User = Depends(require_tenant_admin),
     tenant_id: int = Depends(get_current_tenant_id),
 ):
-    """Get the public link for a POC (Tenant Admin only)"""
+    """
+    Get the public sharing link for a POC.
+
+    Retrieves the existing public link that allows unauthenticated external
+    parties to view POC details. The link must have been created previously
+    via POST. Only non-deleted links are returned.
+
+    Route: GET /pocs/{poc_id}/public-link
+
+    Path parameters:
+        poc_id (int): The unique identifier of the POC.
+
+    Returns:
+        Public link detail object containing:
+            - id (int): Unique public link identifier.
+            - poc_id (int): Associated POC identifier.
+            - access_token (str): Token used in the public URL.
+            - access_url (str): Full shareable URL (e.g. https://app.example.com/share/{token}).
+            - created_at (datetime): When the link was created.
+            - created_by (int): User ID who created the link.
+
+    Errors:
+        404 Not Found: POC does not exist in this tenant, or no active public link exists.
+        403 Forbidden: Caller is not a Tenant Admin.
+        401 Unauthorized: Missing or invalid authentication token.
+    """
     # Check if POC exists and belongs to the tenant
     poc = (
         db.query(POC)
@@ -830,7 +1107,24 @@ def delete_public_link(
     current_user: User = Depends(require_tenant_admin),
     tenant_id: int = Depends(get_current_tenant_id),
 ):
-    """Delete the public link for a POC (Tenant Admin only)"""
+    """
+    Delete the public link for a POC.
+
+    Purpose: Revoke public access to POC by deleting the shareable link.
+
+    Args:
+        poc_id (int): POC identifier
+
+    Returns:
+        None (204 No Content)
+
+    Requires: Tenant Admin role
+
+    Raises:
+        404 Not Found: POC or public link not found
+        403 Forbidden: Access denied
+    """
+
     # Check if POC exists and belongs to the tenant
     poc = (
         db.query(POC)

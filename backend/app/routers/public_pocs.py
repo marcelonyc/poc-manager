@@ -79,7 +79,36 @@ def get_public_poc(
     poc: POC = Depends(get_public_poc_by_token),
     db: Session = Depends(get_db),
 ):
-    """Get POC details via public link (no authentication required)"""
+    """
+    Get POC details via public sharing link.
+
+    Public endpoint (no authentication required). Returns the full POC
+    details for external stakeholders using the shared access token.
+
+    Route: GET /public/pocs/{access_token}
+
+    Path parameters:
+        access_token (str): The public access token from the sharing URL.
+
+    Returns:
+        POC detail object containing:
+            - id (int): Unique POC identifier.
+            - title (str): POC title.
+            - description (str | null): POC description.
+            - tenant_id (int): Owning tenant.
+            - customer_company_name (str | null): Customer organization.
+            - status (str): Current POC status.
+            - start_date (date | null): Planned start date.
+            - end_date (date | null): Planned end date.
+            - overall_success_score (float | null): Aggregate success metric.
+            - participants (list): Participant summaries.
+            - success_criteria_count (int): Number of success criteria.
+            - tasks_count (int): Number of tasks.
+            - task_groups_count (int): Number of task groups.
+
+    Errors:
+        404 Not Found: Invalid or expired access token.
+    """
     # Participants (if any)
     participant_list = [
         {
@@ -122,7 +151,35 @@ def get_public_poc_tasks(
     poc: POC = Depends(get_public_poc_by_token),
     db: Session = Depends(get_db),
 ):
-    """Get POC tasks via public link (no authentication required)"""
+    """
+    Get POC tasks via public sharing link.
+
+    Public endpoint (no authentication required). Returns all tasks for
+    the POC including assignee details and linked success criteria IDs.
+
+    Route: GET /public/pocs/{access_token}/tasks
+
+    Path parameters:
+        access_token (str): The public access token from the sharing URL.
+
+    Returns:
+        List of POC task objects, each containing:
+            - id (int): Unique POC task identifier.
+            - poc_id (int): Parent POC identifier.
+            - task_id (int | null): Source template reference.
+            - title (str): Task name.
+            - description (str | null): Task description.
+            - status (str): One of "not_started", "in_progress", "completed", "blocked".
+            - success_level (int | null): Numeric success rating.
+            - sort_order (int): Display order.
+            - created_at (datetime): Creation timestamp.
+            - completed_at (datetime | null): Completion timestamp.
+            - assignees (list): Assigned participants with id, name, email.
+            - success_criteria_ids (list[int]): Linked success criteria IDs.
+
+    Errors:
+        404 Not Found: Invalid or expired access token.
+    """
     # Get all tasks for this POC
     pocTasks = db.query(POCTask).filter(POCTask.poc_id == poc.id).all()
 
@@ -174,7 +231,35 @@ def get_public_poc_task_groups(
     poc: POC = Depends(get_public_poc_by_token),
     db: Session = Depends(get_db),
 ):
-    """Get POC task groups via public link (no authentication required)"""
+    """
+    Get POC task groups via public sharing link.
+
+    Public endpoint (no authentication required). Returns all task groups
+    for the POC including nested tasks, assignees, and linked success criteria.
+
+    Route: GET /public/pocs/{access_token}/task-groups
+
+    Path parameters:
+        access_token (str): The public access token from the sharing URL.
+
+    Returns:
+        List of POC task group objects, each containing:
+            - id (int): Unique group identifier.
+            - poc_id (int): Parent POC identifier.
+            - task_group_id (int | null): Source template reference.
+            - title (str): Group name.
+            - description (str | null): Group description.
+            - status (str): One of "not_started", "in_progress", "completed", "blocked".
+            - success_level (int | null): Numeric success rating.
+            - sort_order (int): Display order.
+            - created_at (datetime): Creation timestamp.
+            - completed_at (datetime | null): Completion timestamp.
+            - success_criteria_ids (list[int]): Linked success criteria IDs.
+            - tasks (list): Nested POC tasks with full details.
+
+    Errors:
+        404 Not Found: Invalid or expired access token.
+    """
     # Get all task groups for this POC
     pocTaskGroups = (
         db.query(POCTaskGroup).filter(POCTaskGroup.poc_id == poc.id).all()
@@ -273,7 +358,31 @@ def get_public_poc_success_criteria(
     poc: POC = Depends(get_public_poc_by_token),
     db: Session = Depends(get_db),
 ):
-    """Get POC success criteria via public link (no authentication required)"""
+    """
+    Get POC success criteria via public sharing link.
+
+    Public endpoint (no authentication required). Returns all success criteria
+    for the POC, sorted by sort_order.
+
+    Route: GET /public/pocs/{access_token}/success-criteria
+
+    Path parameters:
+        access_token (str): The public access token from the sharing URL.
+
+    Returns:
+        List of success criteria objects, each containing:
+            - id (int): Unique criteria identifier.
+            - poc_id (int): Parent POC identifier.
+            - title (str): Criteria name.
+            - description (str | null): Criteria description.
+            - target_value (str | null): Expected target or threshold.
+            - sort_order (int): Display order.
+            - created_at (datetime): Creation timestamp.
+            - updated_at (datetime | null): Last update timestamp.
+
+    Errors:
+        404 Not Found: Invalid or expired access token.
+    """
     criteria = (
         db.query(SuccessCriteria)
         .filter(SuccessCriteria.poc_id == poc.id)
@@ -303,7 +412,42 @@ def get_public_poc_comments(
     poc: POC = Depends(get_public_poc_by_token),
     db: Session = Depends(get_db),
 ):
-    """Get POC comments via public link (no internal comments) - filtered by task or task group"""
+    """
+    Get POC comments via public sharing link (excludes internal comments).
+
+    Public endpoint (no authentication required). Returns non-internal
+    comments filtered by either task or task group. Exactly one filter
+    must be provided.
+
+    Route: GET /public/pocs/{access_token}/comments?poc_task_id=&poc_task_group_id=
+
+    Path parameters:
+        access_token (str): The public access token from the sharing URL.
+
+    Query parameters:
+        poc_task_id (int, optional): Filter by task ID. Mutually exclusive with poc_task_group_id.
+        poc_task_group_id (int, optional): Filter by task group ID. Mutually exclusive with poc_task_id.
+
+    Returns:
+        List of comment objects, each containing:
+            - id (int): Unique comment identifier.
+            - subject (str): Comment subject.
+            - content (str): Comment body text.
+            - user_id (int | null): Author user ID (null for guests).
+            - poc_id (int): Parent POC identifier.
+            - poc_task_id (int | null): Associated task ID.
+            - poc_task_group_id (int | null): Associated task group ID.
+            - is_internal (bool): Always false for public access.
+            - created_at (datetime): Creation timestamp.
+            - updated_at (datetime | null): Last edit timestamp.
+            - guest_name (str | null): Guest commenter name.
+            - guest_email (str | null): Guest commenter email.
+            - user (object): Author info with id, email, full_name.
+
+    Errors:
+        400 Bad Request: Neither or both filter parameters provided.
+        404 Not Found: Invalid token, or task/group not found in this POC.
+    """
     # Validate that at least one filter is specified
     if not poc_task_id and not poc_task_group_id:
         raise HTTPException(
@@ -499,7 +643,32 @@ def get_public_task_resources(
     poc: POC = Depends(get_public_poc_by_token),
     db: Session = Depends(get_db),
 ):
-    """Get resources for a POC task via public link (no authentication required)"""
+    """
+    Get resources for a POC task via public sharing link.
+
+    Public endpoint (no authentication required). Returns all resources
+    attached to a specific task, sorted by sort_order.
+
+    Route: GET /public/pocs/{access_token}/tasks/{task_id}/resources
+
+    Path parameters:
+        access_token (str): The public access token from the sharing URL.
+        task_id (int): The unique identifier of the POC task.
+
+    Returns:
+        List of resource objects, each containing:
+            - id (int): Unique resource identifier.
+            - title (str): Resource name.
+            - description (str | null): Resource description.
+            - resource_type (str): Type — one of "link", "code", "text", "file".
+            - content (str): Resource content.
+            - sort_order (int): Display order.
+            - created_at (datetime): Creation timestamp.
+            - updated_at (datetime | null): Last update timestamp.
+
+    Errors:
+        404 Not Found: Invalid token or task not found in this POC.
+    """
     # Verify task exists and belongs to this POC
     task = (
         db.query(POCTask)
@@ -541,7 +710,32 @@ def get_public_task_group_resources(
     poc: POC = Depends(get_public_poc_by_token),
     db: Session = Depends(get_db),
 ):
-    """Get resources for a POC task group via public link (no authentication required)"""
+    """
+    Get resources for a POC task group via public sharing link.
+
+    Public endpoint (no authentication required). Returns all resources
+    attached to a specific task group, sorted by sort_order.
+
+    Route: GET /public/pocs/{access_token}/task-groups/{group_id}/resources
+
+    Path parameters:
+        access_token (str): The public access token from the sharing URL.
+        group_id (int): The unique identifier of the POC task group.
+
+    Returns:
+        List of resource objects, each containing:
+            - id (int): Unique resource identifier.
+            - title (str): Resource name.
+            - description (str | null): Resource description.
+            - resource_type (str): Type — one of "link", "code", "text", "file".
+            - content (str): Resource content.
+            - sort_order (int): Display order.
+            - created_at (datetime): Creation timestamp.
+            - updated_at (datetime | null): Last update timestamp.
+
+    Errors:
+        404 Not Found: Invalid token or task group not found in this POC.
+    """
     # Verify task group exists and belongs to this POC
     task_group = (
         db.query(POCTaskGroup)

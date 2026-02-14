@@ -1,6 +1,6 @@
 """User schemas"""
 
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, ConfigDict
 from typing import Optional
 from datetime import datetime
 from app.models.user import UserRole
@@ -40,14 +40,13 @@ class UserInvite(BaseModel):
 class User(UserBase):
     """Schema for user response"""
 
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     is_active: bool
     tenant_id: Optional[int]
     created_at: datetime
     last_login: Optional[datetime]
-
-    class Config:
-        from_attributes = True
 
 
 class Token(BaseModel):

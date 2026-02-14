@@ -32,14 +32,13 @@ class TaskUpdate(BaseModel):
 class Task(TaskBase):
     """Schema for task response"""
 
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     tenant_id: int
     created_by: int
     is_template: bool
     created_at: datetime
-
-    class Config:
-        from_attributes = True
 
 
 class TaskGroupBase(BaseModel):
@@ -65,15 +64,14 @@ class TaskGroupUpdate(BaseModel):
 class TaskGroup(TaskGroupBase):
     """Schema for task group response"""
 
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     tenant_id: int
     created_by: int
     is_template: bool
     created_at: datetime
     tasks: List["Task"] = []
-
-    class Config:
-        from_attributes = True
 
 
 class POCTaskBase(BaseModel):
@@ -105,14 +103,13 @@ class POCTaskUpdate(BaseModel):
 class POCTaskAssignee(BaseModel):
     """Schema for task assignee response"""
 
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     participant_id: int
     participant_name: str
     participant_email: str
     assigned_at: datetime
-
-    class Config:
-        from_attributes = True
 
 
 class POCTaskAssignRequest(BaseModel):

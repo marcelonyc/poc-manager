@@ -1,5 +1,14 @@
-"""Invitation model for Platform Admin invites"""
-from sqlalchemy import Column, Integer, String, DateTime, Enum as SQLEnum, Boolean
+"""Invitation model for user invites (Platform Admin and Team Members)"""
+
+from sqlalchemy import (
+    Column,
+    Integer,
+    String,
+    DateTime,
+    Enum as SQLEnum,
+    ForeignKey,
+)
+from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from app.database import Base
 import enum
@@ -7,6 +16,7 @@ import enum
 
 class InvitationStatus(str, enum.Enum):
     """Invitation status enumeration"""
+
     PENDING = "pending"
     ACCEPTED = "accepted"
     EXPIRED = "expired"
@@ -14,19 +24,34 @@ class InvitationStatus(str, enum.Enum):
 
 
 class Invitation(Base):
-    """Invitation model for Platform Admin invitations"""
+    """Invitation model for all user invitations (Platform Admin + Team Members)"""
+
     __tablename__ = "invitations"
 
     id = Column(Integer, primary_key=True, index=True)
     email = Column(String, index=True, nullable=False)
     full_name = Column(String, nullable=False)
     token = Column(String, unique=True, index=True, nullable=False)
-    status = Column(SQLEnum(InvitationStatus, values_callable=lambda x: [e.value for e in x]), default=InvitationStatus.PENDING, nullable=False)
+    status = Column(
+        SQLEnum(
+            InvitationStatus, values_callable=lambda x: [e.value for e in x]
+        ),
+        default=InvitationStatus.PENDING,
+        nullable=False,
+    )
     invited_by_email = Column(String, nullable=False)
-    
+
+    # Role and tenant for team member invitations (nullable for backward compat)
+    role = Column(
+        String, nullable=True
+    )  # e.g. "sales_engineer", "administrator", etc.
+    tenant_id = Column(Integer, ForeignKey("tenants.id"), nullable=True)
+
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     expires_at = Column(DateTime(timezone=True), nullable=False)
     accepted_at = Column(DateTime(timezone=True), nullable=True)
-    
+
+    tenant = relationship("Tenant", foreign_keys=[tenant_id], lazy="joined")
+
     def __repr__(self):
         return f"<Invitation {self.email} - {self.status}>"

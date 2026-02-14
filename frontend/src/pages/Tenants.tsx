@@ -16,6 +16,7 @@ interface Tenant {
     tenant_admin_limit: number
     administrator_limit: number
     sales_engineer_limit: number
+    account_executive_limit: number
     customer_limit: number
 }
 
@@ -32,6 +33,7 @@ interface TenantFormData {
     tenant_admin_limit: number
     administrator_limit: number
     sales_engineer_limit: number
+    account_executive_limit: number
     customer_limit: number
 }
 
@@ -44,6 +46,7 @@ interface TenantUpdateData {
     tenant_admin_limit: number
     administrator_limit: number
     sales_engineer_limit: number
+    account_executive_limit: number
     customer_limit: number
 }
 
@@ -66,6 +69,7 @@ export default function Tenants() {
         tenant_admin_limit: 5,
         administrator_limit: 10,
         sales_engineer_limit: 50,
+        account_executive_limit: 50,
         customer_limit: 500,
     })
     const [submitting, setSubmitting] = useState(false)
@@ -120,6 +124,7 @@ export default function Tenants() {
                 tenant_admin_limit: 5,
                 administrator_limit: 10,
                 sales_engineer_limit: 50,
+                account_executive_limit: 50,
                 customer_limit: 500,
             })
             fetchTenants()
@@ -151,6 +156,7 @@ export default function Tenants() {
             tenant_admin_limit: tenant.tenant_admin_limit,
             administrator_limit: tenant.administrator_limit,
             sales_engineer_limit: tenant.sales_engineer_limit,
+            account_executive_limit: tenant.account_executive_limit,
             customer_limit: tenant.customer_limit,
         })
     }
@@ -412,6 +418,19 @@ export default function Tenants() {
                                 </div>
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">
+                                        Account Executives
+                                    </label>
+                                    <input
+                                        type="number"
+                                        name="account_executive_limit"
+                                        min="1"
+                                        value={formData.account_executive_limit}
+                                        onChange={handleInputChange}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">
                                         Customers
                                     </label>
                                     <input
@@ -504,6 +523,7 @@ export default function Tenants() {
                                         <div>Admins: {tenant.tenant_admin_limit}</div>
                                         <div>Managers: {tenant.administrator_limit}</div>
                                         <div>Sales: {tenant.sales_engineer_limit}</div>
+                                        <div>AE: {tenant.account_executive_limit}</div>
                                         <div>Customers: {tenant.customer_limit}</div>
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap">
@@ -706,6 +726,19 @@ export default function Tenants() {
                                             name="sales_engineer_limit"
                                             min="1"
                                             value={updateData.sales_engineer_limit}
+                                            onChange={handleUpdateChange}
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                                            Account Executives
+                                        </label>
+                                        <input
+                                            type="number"
+                                            name="account_executive_limit"
+                                            min="1"
+                                            value={updateData.account_executive_limit}
                                             onChange={handleUpdateChange}
                                             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                                         />

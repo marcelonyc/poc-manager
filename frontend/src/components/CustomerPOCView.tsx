@@ -26,6 +26,7 @@ interface POCTaskGroup {
     title: string
     description: string | null
     status?: string
+    success_criteria_ids?: number[]
     tasks?: POCTask[]
 }
 
@@ -377,18 +378,42 @@ export default function CustomerPOCView({ pocId, isPublicAccess = false, publicP
                                         </thead>
                                         <tbody className="bg-white divide-y divide-gray-200">
                                             {successCriteria.map((criteria: any) => {
-                                                const allTasks: POCTask[] = [
-                                                    ...pocTasks,
-                                                    ...pocTaskGroups.flatMap(group => group.tasks || [])
-                                                ]
+                                                // Deduplicate tasks: pocTasks includes all tasks (even those in groups),
+                                                // so use a Map to avoid counting group tasks twice
+                                                const taskMap = new Map<number, POCTask>()
+                                                pocTasks.forEach(t => { if (t.id) taskMap.set(t.id, t) })
+                                                pocTaskGroups.forEach(group => {
+                                                    (group.tasks || []).forEach(t => { if (t.id) taskMap.set(t.id, t) })
+                                                })
+                                                const allTasks = Array.from(taskMap.values())
 
-                                                const relatedTasks = allTasks.filter(task => {
-                                                    if (!task.success_criteria_ids || !Array.isArray(task.success_criteria_ids)) {
-                                                        return false
+                                                // Find task IDs belonging to groups that are linked to this criteria
+                                                const groupLinkedTaskIds = new Set<number>()
+                                                pocTaskGroups.forEach(group => {
+                                                    const groupCriteriaIds = group.success_criteria_ids || []
+                                                    if (groupCriteriaIds.some((id: number) => id == criteria.id || String(id) === String(criteria.id))) {
+                                                        (group.tasks || []).forEach(t => {
+                                                            if (t.id) groupLinkedTaskIds.add(t.id)
+                                                        })
                                                     }
-                                                    return task.success_criteria_ids.some(id =>
-                                                        id == criteria.id || String(id) === String(criteria.id)
-                                                    )
+                                                })
+
+                                                // A task is related if it directly links to the criteria
+                                                // OR belongs to a task group linked to the criteria
+                                                const relatedTasks = allTasks.filter(task => {
+                                                    // Check direct task-level link
+                                                    if (task.success_criteria_ids && Array.isArray(task.success_criteria_ids)) {
+                                                        if (task.success_criteria_ids.some(id =>
+                                                            id == criteria.id || String(id) === String(criteria.id)
+                                                        )) {
+                                                            return true
+                                                        }
+                                                    }
+                                                    // Check group-level link
+                                                    if (task.id && groupLinkedTaskIds.has(task.id)) {
+                                                        return true
+                                                    }
+                                                    return false
                                                 })
 
                                                 const notStarted = relatedTasks.filter(t => t.status === 'not_started' || !t.status).length

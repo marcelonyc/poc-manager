@@ -1,5 +1,6 @@
 """POC Invitation schemas"""
-from pydantic import BaseModel, EmailStr
+
+from pydantic import BaseModel, EmailStr, ConfigDict
 from datetime import datetime
 from typing import Optional
 from app.models.poc_invitation import POCInvitationStatus
@@ -7,6 +8,7 @@ from app.models.poc_invitation import POCInvitationStatus
 
 class POCInvitationCreate(BaseModel):
     """Schema for creating a POC invitation"""
+
     email: EmailStr
     full_name: str
     is_customer: bool = True
@@ -15,6 +17,9 @@ class POCInvitationCreate(BaseModel):
 
 class POCInvitationResponse(BaseModel):
     """Schema for POC invitation response"""
+
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     poc_id: int
     email: EmailStr
@@ -30,19 +35,18 @@ class POCInvitationResponse(BaseModel):
     email_error: Optional[str]
     resend_count: int
     last_resent_at: Optional[datetime]
-    
-    class Config:
-        from_attributes = True
 
 
 class POCInvitationAccept(BaseModel):
     """Schema for accepting a POC invitation"""
+
     token: str
     password: Optional[str] = None  # Required only if user doesn't exist
 
 
 class POCInvitationToken(BaseModel):
     """Schema for POC invitation token validation"""
+
     poc_id: int
     poc_title: str
     email: EmailStr

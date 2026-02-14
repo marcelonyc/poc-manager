@@ -37,6 +37,12 @@ POC Manager is a multi-tenant web application designed to streamline the entire 
 - Real-time feedback from customers
 - Communication history for each task
 
+### 🤖 **AI Assistant**
+- Intelligent Q&A about your POCs and tasks
+- Natural language queries powered by LLMs
+- Real-time data retrieval using MCP tools
+- Secure, role-based access to information
+
 ### 📊 **Reporting & Analytics**
 - POC dashboard with key metrics
 - Progress tracking and completion rates
@@ -68,6 +74,7 @@ POC Manager is a multi-tenant web application designed to streamline the entire 
     Explore specific features:
     
     - [Dashboard](features/dashboard.md)
+    - [AI Assistant](features/ai-assistant.md)
     - [Comments System](features/comments.md)
     - [Resources](features/resources.md)
     - [Task Assignment](features/task-assignment.md)

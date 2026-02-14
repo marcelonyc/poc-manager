@@ -18,6 +18,9 @@ interface Tenant {
     custom_mail_tls: boolean | null
     logo_url: string | null
     is_demo: boolean
+    ai_assistant_enabled: boolean
+    has_ollama_api_key: boolean
+    ollama_model: string | null
 }
 
 export default function TenantSettings() {
@@ -55,6 +58,12 @@ export default function TenantSettings() {
     const [testEmailAddress, setTestEmailAddress] = useState('')
     const [sendingTestEmail, setSendingTestEmail] = useState(false)
 
+    // AI Assistant
+    const [aiEnabled, setAiEnabled] = useState(false)
+    const [ollamaApiKey, setOllamaApiKey] = useState('')
+    const [savingAi, setSavingAi] = useState(false)
+    const [showAiWarning, setShowAiWarning] = useState(false)
+
     useEffect(() => {
         if (user?.tenant_id) {
             fetchTenantSettings()
@@ -79,6 +88,9 @@ export default function TenantSettings() {
             // Set branding colors
             setPrimaryColor(tenantData.primary_color || '#0066cc')
             setSecondaryColor(tenantData.secondary_color || '#333333')
+
+            // Set AI Assistant state
+            setAiEnabled(tenantData.ai_assistant_enabled || false)
 
             setError('')
         } catch (err: any) {
@@ -251,6 +263,44 @@ export default function TenantSettings() {
         } finally {
             setSendingTestEmail(false)
         }
+    }
+
+    const handleSaveAiAssistant = async (e: React.FormEvent) => {
+        e.preventDefault()
+        setSavingAi(true)
+        setError('')
+        setSuccess('')
+
+        try {
+            const updateData: Record<string, any> = {
+                ai_assistant_enabled: aiEnabled,
+            }
+            if (ollamaApiKey) {
+                updateData.ollama_api_key = ollamaApiKey
+            }
+
+            await api.put(`/tenants/${user?.tenant_id}`, updateData)
+            setSuccess('AI Assistant settings saved successfully')
+            setOllamaApiKey('')
+            fetchTenantSettings()
+        } catch (err: any) {
+            setError(err.response?.data?.detail || 'Failed to save AI Assistant settings')
+        } finally {
+            setSavingAi(false)
+        }
+    }
+
+    const handleToggleAi = (enabled: boolean) => {
+        if (enabled && !aiEnabled) {
+            setShowAiWarning(true)
+        } else {
+            setAiEnabled(enabled)
+        }
+    }
+
+    const confirmEnableAi = () => {
+        setAiEnabled(true)
+        setShowAiWarning(false)
     }
 
     if (user?.role === 'platform_admin') {
@@ -625,6 +675,146 @@ export default function TenantSettings() {
                             </div>
                         )}
                     </div>
+
+                    {/* AI Assistant Configuration */}
+                    <div className="bg-white rounded-lg shadow-md p-6">
+                        <div className="flex items-center justify-between mb-4">
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-lg bg-gradient-to-r from-indigo-500 to-purple-500 flex items-center justify-center">
+                                    <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 3.104v5.714a2.25 2.25 0 01-.659 1.591L5 14.5M9.75 3.104c-.251.023-.501.05-.75.082m.75-.082a24.301 24.301 0 014.5 0m0 0v5.714c0 .597.237 1.17.659 1.591L19.8 15.3M14.25 3.104c.251.023.501.05.75.082M19.8 15.3l-1.57.393A9.065 9.065 0 0112 15a9.065 9.065 0 00-6.23.693L5 14.5m14.8.8l1.402 1.402c1.232 1.232.65 3.318-1.067 3.611A48.309 48.309 0 0112 21c-2.773 0-5.491-.235-8.135-.687-1.718-.293-2.3-2.379-1.067-3.61L5 14.5" />
+                                    </svg>
+                                </div>
+                                <h2 className="text-xl font-semibold">AI Assistant</h2>
+                            </div>
+                            {tenant.ai_assistant_enabled && tenant.has_ollama_api_key && (
+                                <span className="px-3 py-1 bg-green-100 text-green-800 text-sm rounded-full">
+                                    Active
+                                </span>
+                            )}
+                        </div>
+
+                        <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-6">
+                            <div className="flex">
+                                <svg className="h-5 w-5 text-amber-500 mr-3 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                                </svg>
+                                <div>
+                                    <h3 className="text-sm font-medium text-amber-800">Bring Your Own Model</h3>
+                                    <p className="text-sm text-amber-700 mt-1">
+                                        This is a <strong>bring-your-own-model</strong> feature that requires access to  <strong>Ollama Cloud Models</strong>.
+                                        You must provide a valid Ollama API key. The AI Assistant uses your
+                                        Ollama API to power conversations — your data is sent to your Ollama Cloud Account.
+                                        <br />
+                                        <a href="https://ollama.com/pricing" target="_blank" rel="noopener noreferrer" className="text-amber-800 underline hover:text-amber-900">
+                                            Learn more about Ollama pricing
+                                        </a>
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
+                        {tenant?.ollama_model && (
+                            <div className="flex items-start gap-3 mb-6 px-4 py-3 bg-indigo-50 border border-indigo-200 rounded-lg">
+                                <svg className="h-5 w-5 text-indigo-500 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                                </svg>
+                                <p className="text-sm text-indigo-800">
+                                    <span className="font-medium">Ollama model in use:</span>{' '}
+                                    <code className="px-1.5 py-0.5 bg-indigo-100 rounded text-indigo-900 font-mono text-xs">{tenant.ollama_model}</code>
+                                </p>
+                            </div>
+                        )}
+
+                        <form onSubmit={handleSaveAiAssistant} className="space-y-4">
+                            <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                                <div>
+                                    <label className="text-sm font-medium text-gray-900">Enable AI Assistant</label>
+                                    <p className="text-xs text-gray-500 mt-0.5">Allow users in this tenant to use the AI chat assistant</p>
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={() => handleToggleAi(!aiEnabled)}
+                                    className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 ${aiEnabled ? 'bg-indigo-600' : 'bg-gray-200'
+                                        }`}
+                                >
+                                    <span
+                                        className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${aiEnabled ? 'translate-x-5' : 'translate-x-0'
+                                            }`}
+                                    />
+                                </button>
+                            </div>
+
+                            {aiEnabled && (
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                                        Ollama API Key {tenant.has_ollama_api_key ? '(Leave blank to keep existing)' : '*'}
+                                    </label>
+                                    <input
+                                        type="password"
+                                        value={ollamaApiKey}
+                                        onChange={(e) => setOllamaApiKey(e.target.value)}
+                                        required={!tenant.has_ollama_api_key}
+                                        placeholder={tenant.has_ollama_api_key ? '••••••••' : 'Enter your Ollama API key'}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                                    />
+                                    <p className="text-xs text-gray-500 mt-1">
+                                        Your API key is encrypted and stored securely. It is only used for AI Assistant sessions within this tenant.
+                                    </p>
+                                </div>
+                            )}
+
+                            <div className="pt-4 border-t">
+                                <button
+                                    type="submit"
+                                    disabled={savingAi}
+                                    className="bg-indigo-600 text-white px-6 py-2 rounded-lg hover:bg-indigo-700 disabled:bg-gray-400"
+                                >
+                                    {savingAi ? 'Saving...' : 'Save AI Assistant Settings'}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+
+                    {/* AI Enable Warning Modal */}
+                    {showAiWarning && (
+                        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                            <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 p-6">
+                                <div className="flex items-center gap-3 mb-4">
+                                    <div className="flex-shrink-0 h-10 w-10 rounded-full bg-amber-100 flex items-center justify-center">
+                                        <svg className="h-6 w-6 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                                        </svg>
+                                    </div>
+                                    <h3 className="text-lg font-semibold text-gray-900">Enable AI Assistant?</h3>
+                                </div>
+
+                                <p className="text-sm text-gray-600 mb-3">
+                                    This is a <strong>bring-your-own-model</strong> feature. Before enabling, please ensure:
+                                </p>
+                                <ul className="text-sm text-gray-600 mb-4 list-disc list-inside space-y-1">
+                                    <li>You have access to an <strong>Ollama API</strong> instance</li>
+                                    <li>You have a valid Ollama API key to provide</li>
+                                    <li>You understand that chat messages will be sent to your Ollama endpoint</li>
+                                </ul>
+
+                                <div className="flex justify-end gap-3">
+                                    <button
+                                        onClick={() => setShowAiWarning(false)}
+                                        className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button
+                                        onClick={confirmEnableAi}
+                                        className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 transition-colors"
+                                    >
+                                        I Understand, Enable
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
 
                     {/* Demo Account Upgrade Section */}
                     {tenant?.is_demo && (

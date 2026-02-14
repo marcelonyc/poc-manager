@@ -61,7 +61,7 @@ export default function Users() {
 
         try {
             const response = await api.post('/users/invite', formData)
-            toast.success(`User invited successfully! Temporary password: ${response.data.temporary_password}`)
+            toast.success('Invitation sent! The user will receive an email to set their password.')
             setShowInviteForm(false)
             setFormData({
                 email: '',
@@ -102,6 +102,8 @@ export default function Users() {
                 return 'bg-indigo-100 text-indigo-800'
             case 'sales_engineer':
                 return 'bg-green-100 text-green-800'
+            case 'account_executive':
+                return 'bg-teal-100 text-teal-800'
             case 'customer':
                 return 'bg-gray-100 text-gray-800'
             default:
@@ -120,6 +122,7 @@ export default function Users() {
                 { value: 'tenant_admin', label: 'Tenant Admin' },
                 { value: 'administrator', label: 'Administrator' },
                 { value: 'sales_engineer', label: 'Sales Engineer' },
+                { value: 'account_executive', label: 'Account Executive' },
                 { value: 'customer', label: 'Customer' },
             ]
         } else if (currentUser?.role === 'tenant_admin') {
@@ -127,11 +130,13 @@ export default function Users() {
                 { value: 'tenant_admin', label: 'Tenant Admin' },
                 { value: 'administrator', label: 'Administrator' },
                 { value: 'sales_engineer', label: 'Sales Engineer' },
+                { value: 'account_executive', label: 'Account Executive' },
                 { value: 'customer', label: 'Customer' },
             ]
         } else if (currentUser?.role === 'administrator') {
             return [
                 { value: 'sales_engineer', label: 'Sales Engineer' },
+                { value: 'account_executive', label: 'Account Executive' },
                 { value: 'customer', label: 'Customer' },
             ]
         }
@@ -216,22 +221,22 @@ export default function Users() {
                             </div>
                         </div>
 
-                        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                             <div className="flex">
                                 <div className="flex-shrink-0">
-                                    <svg className="h-5 w-5 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
-                                        <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                                    <svg className="h-5 w-5 text-blue-400" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
                                     </svg>
                                 </div>
                                 <div className="ml-3">
-                                    <h3 className="text-sm font-medium text-yellow-800">
-                                        Temporary Password
+                                    <h3 className="text-sm font-medium text-blue-800">
+                                        Email Invitation
                                     </h3>
-                                    <div className="mt-2 text-sm text-yellow-700">
+                                    <div className="mt-2 text-sm text-blue-700">
                                         <p>
-                                            The invited user will receive a temporary password: <code className="font-mono font-bold">ChangeMe123!</code>
+                                            The invited user will receive an email with a link to set their own password and activate their account.
                                         </p>
-                                        <p className="mt-1">They should change it immediately after first login.</p>
+                                        <p className="mt-1">The invitation expires in 7 days.</p>
                                     </div>
                                 </div>
                             </div>
@@ -365,6 +370,12 @@ export default function Users() {
                     <div className="text-sm text-gray-500">Sales Engineers</div>
                     <div className="text-2xl font-bold text-blue-600">
                         {users.filter(u => u.role === 'sales_engineer').length}
+                    </div>
+                </div>
+                <div className="bg-white p-4 rounded-lg shadow">
+                    <div className="text-sm text-gray-500">Account Executives</div>
+                    <div className="text-2xl font-bold text-teal-600">
+                        {users.filter(u => u.role === 'account_executive').length}
                     </div>
                 </div>
                 <div className="bg-white p-4 rounded-lg shadow">

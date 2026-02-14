@@ -29,7 +29,7 @@ export default function POCDetail() {
     const [deletingLink, setDeletingLink] = useState(false)
 
     const isTenantAdmin = user?.role === 'tenant_admin'
-    const canEditPoc = user?.role === 'administrator' || user?.role === 'sales_engineer' || user?.role === 'tenant_admin'
+    const canEditPoc = user?.role === 'administrator' || user?.role === 'sales_engineer' || user?.role === 'account_executive' || user?.role === 'tenant_admin'
 
     useEffect(() => {
         if (id) {

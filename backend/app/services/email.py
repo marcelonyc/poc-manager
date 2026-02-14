@@ -5,6 +5,7 @@ from fastapi_mail import FastMail, MessageSchema, ConnectionConfig
 from typing import List
 from app.config import settings
 from app.models.tenant import Tenant
+from app.utils import decrypt_value
 
 logger = logging.getLogger(__name__)
 
@@ -13,8 +14,8 @@ def get_mail_config(tenant: Tenant = None) -> ConnectionConfig:
     """Get email configuration (tenant-specific or default)"""
     if tenant and tenant.custom_mail_server:
         return ConnectionConfig(
-            MAIL_USERNAME=tenant.custom_mail_username,
-            MAIL_PASSWORD=tenant.custom_mail_password,
+            MAIL_USERNAME=decrypt_value(tenant.custom_mail_username) or "",
+            MAIL_PASSWORD=decrypt_value(tenant.custom_mail_password) or "",
             MAIL_FROM=tenant.custom_mail_from,
             MAIL_PORT=tenant.custom_mail_port,
             MAIL_SERVER=tenant.custom_mail_server,
@@ -121,27 +122,61 @@ async def send_user_invitation_email(
     email: str,
     full_name: str,
     role: str,
-    temp_password: str,
+    token: str,
     tenant: Tenant = None,
 ):
-    """Send user invitation email (for non-Platform Admin users)"""
-    subject = "Invitation to POC Manager"
-    body = f"""
-    Hello {full_name},
-    
-    You have been invited to join POC Manager as a {role}.
-    
-    Your login credentials:
-    Email: {email}
-    Temporary Password: {temp_password}
-    
-    Please log in and change your password immediately.
-    
-    Best regards,
-    POC Manager Team
-    """
+    """Send user invitation email with a link to set their own password"""
+    try:
+        from app.config import settings
 
-    await send_email([email], subject, body, tenant)
+        frontend_url = getattr(
+            settings, "FRONTEND_URL", "http://localhost:3001"
+        )
+        invitation_url = f"{frontend_url}/accept-invitation?token={token}"
+
+        role_display = role.replace("_", " ").title()
+        tenant_line = ""
+        if tenant:
+            tenant_line = f" for <strong>{tenant.name}</strong>"
+
+        subject = "You're Invited to Join POC Manager"
+        body = f"""
+        <html>
+            <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+                <h2 style="color: #4F46E5;">You've Been Invited!</h2>
+                <p>Hello {full_name},</p>
+                <p>You have been invited to join POC Manager as a <strong>{role_display}</strong>{tenant_line}.</p>
+                <p>Click the button below to set your password and activate your account:</p>
+                <div style="margin: 30px 0;">
+                    <a href="{invitation_url}"
+                       style="background-color: #4F46E5; color: white; padding: 12px 24px;
+                              text-decoration: none; border-radius: 6px; display: inline-block;">
+                        Accept Invitation &amp; Set Password
+                    </a>
+                </div>
+                <p style="color: #666; font-size: 14px;">
+                    Or copy and paste this link into your browser:<br>
+                    <a href="{invitation_url}">{invitation_url}</a>
+                </p>
+                <p style="color: #999; font-size: 12px; margin-top: 30px;">
+                    This invitation will expire in 7 days.
+                </p>
+                <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
+                <p style="color: #666; font-size: 14px;">
+                    Best regards,<br>
+                    POC Manager Team
+                </p>
+            </body>
+        </html>
+        """
+
+        await send_email([email], subject, body, tenant, html=True)
+        logger.info(f"Successfully sent user invitation email to {email}")
+    except Exception as e:
+        logger.error(
+            f"Failed to send user invitation email to {email}: {str(e)}",
+            exc_info=True,
+        )
 
 
 async def send_poc_update_notification(

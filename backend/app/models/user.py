@@ -22,6 +22,7 @@ class UserRole(str, enum.Enum):
     TENANT_ADMIN = "tenant_admin"
     ADMINISTRATOR = "administrator"
     SALES_ENGINEER = "sales_engineer"
+    ACCOUNT_EXECUTIVE = "account_executive"
     CUSTOMER = "customer"
 
 

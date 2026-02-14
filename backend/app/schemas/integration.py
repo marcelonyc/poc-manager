@@ -1,5 +1,6 @@
 """Integration schemas"""
-from pydantic import BaseModel
+
+from pydantic import BaseModel, ConfigDict
 from typing import Optional, Dict, Any
 from datetime import datetime
 from app.models.integration import IntegrationType
@@ -7,18 +8,21 @@ from app.models.integration import IntegrationType
 
 class IntegrationConfigBase(BaseModel):
     """Base integration configuration schema"""
+
     integration_type: IntegrationType
     is_enabled: bool = True
 
 
 class SlackConfig(BaseModel):
     """Slack integration configuration"""
+
     token: str
     channel: str
 
 
 class JiraConfig(BaseModel):
     """Jira integration configuration"""
+
     url: str
     email: str
     api_token: str
@@ -27,12 +31,14 @@ class JiraConfig(BaseModel):
 
 class GitHubConfig(BaseModel):
     """GitHub integration configuration"""
+
     token: str
     default_repo: Optional[str] = None
 
 
 class EmailConfig(BaseModel):
     """Email integration configuration"""
+
     server: str
     port: int
     username: str
@@ -43,25 +49,28 @@ class EmailConfig(BaseModel):
 
 class IntegrationCreate(IntegrationConfigBase):
     """Schema for creating an integration"""
+
     config: Dict[str, Any]
 
 
 class IntegrationUpdate(BaseModel):
     """Schema for updating an integration"""
+
     is_enabled: Optional[bool] = None
     config: Optional[Dict[str, Any]] = None
 
 
 class Integration(IntegrationConfigBase):
     """Schema for integration response"""
+
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     tenant_id: int
     created_at: datetime
-    
-    class Config:
-        from_attributes = True
 
 
 class IntegrationDetail(Integration):
     """Schema for detailed integration response with config"""
+
     config: Dict[str, Any] = {}

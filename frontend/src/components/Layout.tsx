@@ -3,6 +3,7 @@ import { useAuthStore } from '../store/authStore'
 import { useState, useEffect } from 'react'
 import { api, API_URL } from '../lib/api'
 import HelpBubble from './HelpBubble'
+import AIAssistantButton from './AIAssistantButton'
 
 // Helper function to adjust color brightness
 function adjustBrightness(color: string, amount: number): string {
@@ -180,6 +181,7 @@ export default function Layout() {
             <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
                 <Outlet />
             </main>
+            <AIAssistantButton />
         </div>
     )
 }

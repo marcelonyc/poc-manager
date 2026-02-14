@@ -244,6 +244,7 @@ def require_sales_engineer(
         UserRole.TENANT_ADMIN,
         UserRole.ADMINISTRATOR,
         UserRole.SALES_ENGINEER,
+        UserRole.ACCOUNT_EXECUTIVE,
     ]
 
     if current_role is None:

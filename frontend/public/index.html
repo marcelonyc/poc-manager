@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scheduled Maintenance - POC Manager</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: #f0f4f8;
+            color: #334155;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .container {
+            text-align: center;
+            max-width: 600px;
+            padding: 2rem;
+        }
+
+        .icon {
+            width: 96px;
+            height: 96px;
+            margin: 0 auto 2rem;
+            background: #e2e8f0;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .icon svg {
+            width: 48px;
+            height: 48px;
+            color: #64748b;
+        }
+
+        h1 {
+            font-size: 1.75rem;
+            font-weight: 700;
+            color: #1e293b;
+            margin-bottom: 0.75rem;
+        }
+
+        .subtitle {
+            font-size: 1.125rem;
+            color: #475569;
+            margin-bottom: 2rem;
+            line-height: 1.6;
+        }
+
+        .card {
+            background: #fff;
+            border-radius: 12px;
+            padding: 2rem;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08), 0 4px 12px rgba(0, 0, 0, 0.04);
+            margin-bottom: 2rem;
+        }
+
+        .card p {
+            font-size: 0.95rem;
+            line-height: 1.7;
+            color: #64748b;
+        }
+
+        .status {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: #fef3c7;
+            color: #92400e;
+            padding: 0.5rem 1rem;
+            border-radius: 9999px;
+            font-size: 0.875rem;
+            font-weight: 600;
+            margin-bottom: 2rem;
+        }
+
+        .status .dot {
+            width: 8px;
+            height: 8px;
+            background: #f59e0b;
+            border-radius: 50%;
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.4;
+            }
+        }
+
+        .footer {
+            font-size: 0.8rem;
+            color: #94a3b8;
+        }
+
+        .footer a {
+            color: #64748b;
+            text-decoration: none;
+        }
+
+        .footer a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="icon">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
+                stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round"
+                    d="M11.42 15.17l-5.25 5.25a2.121 2.121 0 11-3-3l5.25-5.25m7.5-7.5l3-3m-3 3l-2.25-2.25M15.17 11.42l5.25 5.25a2.121 2.121 0 01-3 3l-5.25-5.25m-3.18-3.18L7.06 7.06m3.93 3.93L7.06 7.06m3.93 3.93a2.121 2.121 0 01-3-3" />
+            </svg>
+        </div>
+
+        <div class="status">
+            <span class="dot"></span>
+            Maintenance In Progress
+        </div>
+
+        <h1>We'll Be Back Shortly</h1>
+        <p class="subtitle">POC Manager is currently undergoing scheduled maintenance to improve your experience.</p>
+
+        <div class="card">
+            <p>
+                We're performing upgrades and improvements. This should only take a short while.
+                If you need immediate assistance, please contact your administrator.
+            </p>
+        </div>
+
+        <p class="footer">&copy; 2026 POC Manager</p>
+    </div>
+</body>
+
+</html>

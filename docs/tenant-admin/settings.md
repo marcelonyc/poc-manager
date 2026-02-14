@@ -25,6 +25,34 @@ Tenant settings allow you to customize:
     - Custom domain
     - Email templates
 
+## AI Assistant
+
+Enable and configure the **AI Assistant** feature for your tenant.
+
+### What is it?
+
+The AI Assistant is an intelligent chatbot that helps users query POC data using natural language. It's powered by cloud-hosted language models and integrated with POC Manager using MCP tools.
+
+### Key Configuration
+
+- **Enable/Disable**: Control whether the feature is available to users
+- **API Key**: Provide credentials for the cloud service
+
+### Setup Instructions
+
+See the complete setup guide: **[AI Assistant Configuration](ai-assistant.md)**
+
+Quick steps:
+1. Go to **Settings** → **AI Assistant**
+2. Click **Enable AI Assistant** toggle
+3. Review the requirements warning
+4. Click **I Understand, Enable**
+5. Enter your **API Key**
+6. Save settings
+
+!!! info "Cloud-Hosted Models"
+    The AI Assistant uses cloud-hosted language models. No local installation or server setup is required—you only need to provide the API key for authentication.
+
 ## Integrations
 
 Configure integrations with external services to enhance your POC workflow.
@@ -206,5 +234,6 @@ After configuring settings:
 
 **Related Documentation:**
 
+- [AI Assistant Configuration](ai-assistant.md) - Complete AI Assistant setup and troubleshooting
 - [User Management](users.md) - Managing tenant users
 - [User Roles](../getting-started/roles.md) - Understanding permissions

@@ -7,6 +7,8 @@ interface InvitationInfo {
     full_name: string
     invited_by_email: string
     expires_at: string
+    role: string | null
+    tenant_name: string | null
 }
 
 export default function AcceptInvitation() {
@@ -119,13 +121,27 @@ export default function AcceptInvitation() {
         )
     }
 
+    const getRoleDisplay = (role: string | null) => {
+        if (!role) return 'Platform Administrator'
+        return role.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')
+    }
+
+    const getInvitationDescription = () => {
+        if (!invitationInfo) return ''
+        const roleDisplay = getRoleDisplay(invitationInfo.role)
+        if (invitationInfo.tenant_name) {
+            return `You've been invited to join ${invitationInfo.tenant_name} as a ${roleDisplay}`
+        }
+        return `You've been invited to join as a ${roleDisplay}`
+    }
+
     return (
         <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
             <div className="max-w-md w-full bg-white rounded-lg shadow-md p-8">
                 <div className="text-center mb-8">
                     <h2 className="text-3xl font-bold text-gray-900">Accept Invitation</h2>
                     <p className="mt-2 text-gray-600">
-                        You've been invited to join as a Platform Administrator
+                        {getInvitationDescription()}
                     </p>
                 </div>
 

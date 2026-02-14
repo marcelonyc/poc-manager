@@ -164,7 +164,38 @@ def list_tenant_invitations(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_tenant_admin),
 ):
-    """List all tenant invitations for current tenant"""
+    """
+    List all tenant invitations for the current tenant.
+
+    Returns invitations sent to users to join the caller's tenant, sorted by
+    creation date (newest first). Supports filtering by invitation status.
+
+    Route: GET /tenant-invitations/?skip=0&limit=100&status_filter=
+
+    Query parameters:
+        skip (int, default 0): Number of records to skip for pagination.
+        limit (int, default 100): Maximum number of records to return.
+        status_filter (str, optional): Filter by status — one of "pending", "accepted", "expired", "revoked".
+
+    Returns:
+        List of tenant invitation objects, each containing:
+            - id (int): Unique invitation identifier.
+            - email (str): Invitee email address.
+            - tenant_id (int): Target tenant ID.
+            - tenant_name (str): Target tenant display name.
+            - role (str): Role the invitee will receive upon acceptance.
+            - token (str): Invitation token.
+            - status (str): Current status.
+            - invited_by_email (str): Email of the admin who sent the invitation.
+            - created_at (datetime): When the invitation was sent.
+            - expires_at (datetime): Expiration timestamp.
+            - accepted_at (datetime | null): When the invitation was accepted.
+
+    Errors:
+        400 Bad Request: No tenant context available.
+        403 Forbidden: Caller is not a tenant admin.
+        401 Unauthorized: Missing or invalid authentication token.
+    """
     current_tenant_id = get_current_tenant_id(current_user)
 
     if not current_tenant_id:
@@ -211,7 +242,31 @@ def list_tenant_invitations(
 
 @router.get("/validate/{token}")
 def validate_tenant_invitation(token: str, db: Session = Depends(get_db)):
-    """Validate a tenant invitation token (public endpoint for existing users)"""
+    """
+    Validate a tenant invitation token.
+
+    Public endpoint (no authentication required). Checks whether the token
+    exists, is still pending, and has not expired. Use this before showing
+    the acceptance form to the invitee.
+
+    Route: GET /tenant-invitations/validate/{token}
+
+    Path parameters:
+        token (str): The invitation token from the email link.
+
+    Returns:
+        Dict containing:
+            - email (str): Invitee email address.
+            - tenant_id (int): Target tenant ID.
+            - tenant_name (str): Target tenant display name.
+            - role (str): Role the invitee will receive.
+            - invited_by_email (str): Email of the inviting admin.
+            - expires_at (datetime): Token expiration timestamp.
+
+    Errors:
+        404 Not Found: Token does not exist.
+        400 Bad Request: Invitation is not pending or has expired.
+    """
     invitation = (
         db.query(TenantInvitation)
         .filter(TenantInvitation.token == token)

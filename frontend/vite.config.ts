@@ -4,6 +4,7 @@ import path from 'path'
 
 export default defineConfig({
     plugins: [react()],
+    cacheDir: '/tmp/vite-cache',
     base: process.env.BASE_URL || '/',
     resolve: {
         alias: {

@@ -32,7 +32,23 @@ def create_product(
     current_user: User = Depends(require_administrator),
     tenant_id: int = Depends(get_current_tenant_id),
 ):
-    """Create a new product (Tenant Admin or Administrator)"""
+    """
+    Create a new product for use in POCs.
+
+    Purpose: Add a product/solution to tenant catalog that can be associated with POCs.
+
+    Args:
+        product_data: ProductCreate with name and description
+
+    Returns:
+        ProductSchema with created product
+
+    Requires: Tenant Admin or Administrator
+
+    Raises:
+        400 Bad Request: Product name already exists
+        403 Forbidden: Insufficient permissions
+    """
     # Check if product with same name already exists for this tenant
     existing = (
         db.query(Product)
@@ -64,7 +80,25 @@ def list_products(
     current_user: User = Depends(get_current_user),
     tenant_id: int = Depends(get_current_tenant_id),
 ):
-    """List all products for the current tenant"""
+    """
+    List all products in the tenant catalog.
+
+    Returns the complete product catalog for the caller's tenant, sorted
+    alphabetically by name. Products can be associated with POCs to track
+    which solutions are being evaluated.
+
+    Route: GET /products/
+
+    Returns:
+        List of product objects, each containing:
+            - id (int): Unique product identifier.
+            - name (str): Product name.
+            - tenant_id (int): Owning tenant ID.
+            - created_at (datetime): Creation timestamp.
+
+    Errors:
+        401 Unauthorized: Missing or invalid authentication token.
+    """
     products = (
         db.query(Product)
         .filter(Product.tenant_id == tenant_id)
@@ -80,7 +114,31 @@ def get_product(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Get product details with usage information"""
+    """
+    Get product details with POC usage statistics.
+
+    Retrieves a single product and includes which POCs reference it.
+    Useful for understanding product adoption across POC engagements.
+
+    Route: GET /products/{product_id}
+
+    Path parameters:
+        product_id (int): The unique identifier of the product.
+
+    Returns:
+        Product detail object containing:
+            - id (int): Unique product identifier.
+            - name (str): Product name.
+            - tenant_id (int): Owning tenant ID.
+            - created_at (datetime): Creation timestamp.
+            - poc_count (int): Number of POCs using this product.
+            - poc_titles (list[str]): Titles of POCs using this product.
+
+    Errors:
+        404 Not Found: Product does not exist.
+        403 Forbidden: Caller does not belong to the product's tenant.
+        401 Unauthorized: Missing or invalid authentication token.
+    """
     product = db.query(Product).filter(Product.id == product_id).first()
     if not product:
         raise HTTPException(
@@ -117,7 +175,25 @@ def update_product(
     current_user: User = Depends(require_administrator),
     tenant_id: int = Depends(get_current_tenant_id),
 ):
-    """Update a product name (Tenant Admin or Administrator)"""
+    """
+    Update product details.
+
+    Purpose: Modify product name or description.
+
+    Args:
+        product_id (int): Product identifier
+        product_data: ProductUpdate with fields to modify
+
+    Returns:
+        Updated ProductSchema
+
+    Requires: Administrator role
+
+    Raises:
+        404 Not Found: Product not found
+        400 Bad Request: New name already exists
+        403 Forbidden: Insufficient permissions
+    """
     product = db.query(Product).filter(Product.id == product_id).first()
     if not product:
         raise HTTPException(
@@ -149,7 +225,7 @@ def update_product(
                 detail="Product with this name already exists",
             )
 
-    update_data = product_data.dict(exclude_unset=True)
+    update_data = product_data.model_dump(exclude_unset=True)
     for field, value in update_data.items():
         setattr(product, field, value)
 
@@ -164,7 +240,25 @@ def delete_product(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_administrator),
 ):
-    """Delete a product (Tenant Admin or Administrator)"""
+    """
+    Delete a product from catalog.
+
+    Purpose: Remove a product. Only possible if no POCs use it.
+
+    Args:
+        product_id (int): Product identifier
+
+    Returns:
+        Dict with success message
+
+    Requires: Administrator role
+
+    Raises:
+        404 Not Found: Product not found
+        400 Bad Request: Product is in use by POCs
+        403 Forbidden: Insufficient permissions
+    """
+
     product = db.query(Product).filter(Product.id == product_id).first()
     if not product:
         raise HTTPException(

@@ -1,5 +1,6 @@
 """POC schemas"""
-from pydantic import BaseModel
+
+from pydantic import BaseModel, ConfigDict
 from typing import Optional, List
 from datetime import datetime, date
 from app.models.poc import POCStatus
@@ -7,6 +8,7 @@ from app.models.poc import POCStatus
 
 class POCBase(BaseModel):
     """Base POC schema"""
+
     title: str
     description: Optional[str] = None
     customer_company_name: str
@@ -18,11 +20,13 @@ class POCBase(BaseModel):
 
 class POCCreate(POCBase):
     """Schema for creating a POC"""
+
     product_ids: Optional[List[int]] = []
 
 
 class POCUpdate(BaseModel):
     """Schema for updating a POC"""
+
     title: Optional[str] = None
     description: Optional[str] = None
     customer_company_name: Optional[str] = None
@@ -38,6 +42,7 @@ class POCUpdate(BaseModel):
 
 class POCParticipantAdd(BaseModel):
     """Schema for adding a participant to a POC"""
+
     user_id: Optional[int] = None
     email: Optional[str] = None  # For inviting new users
     full_name: Optional[str] = None
@@ -47,6 +52,9 @@ class POCParticipantAdd(BaseModel):
 
 class POC(POCBase):
     """Schema for POC response"""
+
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     tenant_id: int
     created_by: int
@@ -57,22 +65,20 @@ class POC(POCBase):
     overall_success_score: Optional[int]
     created_at: datetime
     updated_at: Optional[datetime]
-    
-    class Config:
-        from_attributes = True
 
 
 class SimpleProduct(BaseModel):
     """Simplified product schema for POC responses"""
+
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     name: str
-    
-    class Config:
-        from_attributes = True
 
 
 class POCDetail(POC):
     """Schema for detailed POC response with related data"""
+
     participants: List[dict] = []
     products: List[SimpleProduct] = []
     success_criteria_count: int = 0

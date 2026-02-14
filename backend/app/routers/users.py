@@ -1,11 +1,19 @@
 """User router"""
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import List
 from app.database import get_db
 from app.models.user import User, UserRole
 from app.models.user_tenant_role import UserTenantRole
+from app.models.tenant import Tenant
+from datetime import datetime, timedelta
+import secrets
+from app.models.invitation import Invitation, InvitationStatus
+from app.services.email import (
+    send_tenant_invitation_email,
+    send_user_invitation_email,
+)
 from app.schemas.user import (
     UserCreate,
     UserUpdate,
@@ -51,7 +59,11 @@ def create_user(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Insufficient permissions",
             )
-    elif user_data.role in [UserRole.ADMINISTRATOR, UserRole.SALES_ENGINEER]:
+    elif user_data.role in [
+        UserRole.ADMINISTRATOR,
+        UserRole.SALES_ENGINEER,
+        UserRole.ACCOUNT_EXECUTIVE,
+    ]:
         if current_user.role not in [
             UserRole.PLATFORM_ADMIN,
             UserRole.TENANT_ADMIN,
@@ -81,10 +93,22 @@ def create_user(
         full_name=user_data.full_name,
         hashed_password=get_password_hash(user_data.password),
         role=user_data.role,
-        tenant_id=user_tenant_id,
+        tenant_id=tenant_id,
         is_active=True,
     )
     db.add(user)
+    db.flush()
+
+    # Create user_tenant_role entry so user can log in
+    if tenant_id is not None:
+        user_tenant_role = UserTenantRole(
+            user_id=user.id,
+            tenant_id=tenant_id,
+            role=user_data.role,
+            is_default=True,
+        )
+        db.add(user_tenant_role)
+
     db.commit()
     db.refresh(user)
 
@@ -100,7 +124,35 @@ def list_users(
     current_user: User = Depends(get_current_user),
     session_tenant_id: int = Depends(get_current_tenant_id),
 ):
-    """List users with tenant-specific is_active status"""
+    """
+    List users with tenant-specific activation status.
+
+    Returns a paginated list of users. When called within a tenant context,
+    the is_active field reflects the user's status in that specific tenant
+    (from user_tenant_roles), not the platform-level status. Platform admins
+    without tenant context see the global users table is_active value.
+
+    Route: GET /users/?skip=0&limit=100&tenant_id=
+
+    Query parameters:
+        skip (int, default 0): Number of records to skip for pagination.
+        limit (int, default 100): Maximum number of records to return.
+        tenant_id (int, optional): Filter by tenant ID (platform admin only, no tenant context).
+
+    Returns:
+        List of user objects, each containing:
+            - id (int): Unique user identifier.
+            - email (str): User email address.
+            - full_name (str): User display name.
+            - role (str): User role — one of "platform_admin", "tenant_admin", "administrator", "sales_engineer", "customer".
+            - is_active (bool): Activation status (tenant-specific when in tenant context).
+            - tenant_id (int | null): Primary tenant association.
+            - created_at (datetime): Account creation timestamp.
+            - last_login (datetime | null): Last login timestamp.
+
+    Errors:
+        401 Unauthorized: Missing or invalid authentication token.
+    """
 
     # For tenant-scoped requests, we need to join with user_tenant_roles
     # to get the tenant-specific is_active status
@@ -151,7 +203,33 @@ def get_user(
     current_user: User = Depends(get_current_user),
     tenant_id: int = Depends(get_current_tenant_id),
 ):
-    """Get user details"""
+    """
+    Get user details by ID.
+
+    Retrieve a single user's profile. Non-platform-admin callers can only
+    access users within their own tenant or their own profile. Returns 404
+    instead of 403 to avoid leaking user existence across tenants.
+
+    Route: GET /users/{user_id}
+
+    Path parameters:
+        user_id (int): The unique identifier of the user to retrieve.
+
+    Returns:
+        User object containing:
+            - id (int): Unique user identifier.
+            - email (str): User email address.
+            - full_name (str): User display name.
+            - role (str): User role.
+            - is_active (bool): Whether the user account is active.
+            - tenant_id (int | null): Primary tenant association.
+            - created_at (datetime): Account creation timestamp.
+            - last_login (datetime | null): Last login timestamp.
+
+    Errors:
+        404 Not Found: User does not exist or caller lacks access.
+        401 Unauthorized: Missing or invalid authentication token.
+    """
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(
@@ -242,7 +320,7 @@ def update_user(
             )
 
     # Update fields (is_active is not in UserUpdate schema, so it cannot be modified here)
-    update_data = user_data.dict(exclude_unset=True)
+    update_data = user_data.model_dump(exclude_unset=True)
 
     # Double-check: Ensure is_active cannot be modified via this endpoint
     if "is_active" in update_data:
@@ -344,11 +422,14 @@ def deactivate_user(
 @router.post("/invite", status_code=status.HTTP_201_CREATED)
 def invite_user(
     invite_data: UserInvite,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
     tenant_id: int = Depends(get_current_tenant_id),
 ):
-    """Invite a new user (sends email with temporary password)"""
+    """Invite a user to a tenant. If the user already exists but is not
+    associated with this tenant, add them to user_tenant_roles and send
+    an email notification without changing their password."""
     # Check permissions
     if invite_data.role in [UserRole.PLATFORM_ADMIN]:
         if current_user.role != UserRole.PLATFORM_ADMIN:
@@ -357,35 +438,107 @@ def invite_user(
                 detail="Insufficient permissions",
             )
 
-    # Check if user exists
+    # Resolve tenant name for email notifications
+    tenant = None
+    if tenant_id is not None:
+        tenant = db.query(Tenant).filter(Tenant.id == tenant_id).first()
+
+    # Check if user already exists
     existing = db.query(User).filter(User.email == invite_data.email).first()
     if existing:
+        # User exists — check if already associated with this tenant
+        if tenant_id is not None:
+            existing_role = (
+                db.query(UserTenantRole)
+                .filter(
+                    UserTenantRole.user_id == existing.id,
+                    UserTenantRole.tenant_id == tenant_id,
+                )
+                .first()
+            )
+            if existing_role:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="User is already a member of this tenant",
+                )
+
+            # Add existing user to the tenant (do NOT change password)
+            user_tenant_role = UserTenantRole(
+                user_id=existing.id,
+                tenant_id=tenant_id,
+                role=invite_data.role,
+                is_default=False,
+            )
+            db.add(user_tenant_role)
+            db.commit()
+
+            # Send email notification about the new tenant association
+            tenant_name = tenant.name if tenant else "Unknown"
+            background_tasks.add_task(
+                send_tenant_invitation_email,
+                recipient=existing.email,
+                tenant_name=tenant_name,
+                role=invite_data.role.value,
+                token="",  # No token needed — user already has an account
+                invited_by=current_user.full_name or current_user.email,
+            )
+
+            return {
+                "message": "Existing user added to tenant successfully",
+                "user_id": existing.id,
+            }
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="User with this email already exists",
+            )
+
+    # New user — create an invitation (user sets their own password)
+    # Check for existing pending invitation
+    existing_invitation = (
+        db.query(Invitation)
+        .filter(
+            Invitation.email == invite_data.email,
+            Invitation.status == InvitationStatus.PENDING,
+        )
+        .first()
+    )
+    if existing_invitation:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="User with this email already exists",
+            detail="A pending invitation already exists for this email",
         )
 
-    # Generate temporary password (in real app, use secure random)
-    temp_password = "ChangeMe123!"
+    token = secrets.token_urlsafe(32)
+    expires_at = datetime.utcnow() + timedelta(days=7)
 
-    # Create user
-    user = User(
+    invitation = Invitation(
         email=invite_data.email,
         full_name=invite_data.full_name,
-        hashed_password=get_password_hash(temp_password),
-        role=invite_data.role,
+        token=token,
+        status=InvitationStatus.PENDING,
+        invited_by_email=current_user.email,
+        role=invite_data.role.value,
         tenant_id=tenant_id,
-        is_active=True,
+        expires_at=expires_at,
     )
-    db.add(user)
+    db.add(invitation)
     db.commit()
 
-    # TODO: Send invitation email with temp password
+    # Send invitation email with acceptance link
+    tenant_name = tenant.name if tenant else None
+    background_tasks.add_task(
+        send_user_invitation_email,
+        email=invite_data.email,
+        full_name=invite_data.full_name,
+        role=invite_data.role.value,
+        token=token,
+        tenant=tenant,
+    )
 
     return {
-        "message": "User invited successfully",
-        "user_id": user.id,
-        "temporary_password": temp_password,  # Remove in production
+        "message": "Invitation sent successfully. The user will receive an email to set their password.",
+        "invitation_id": invitation.id,
     }
 
 
@@ -479,7 +632,31 @@ def get_user_tenant_roles(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Get all tenant roles for a user (Platform Admin only)"""
+    """
+    List all tenant role associations for a user.
+
+    Returns every tenant the user belongs to along with their role and
+    activation status in each tenant. Platform admins can view any user's
+    tenant roles; other users can only view their own.
+
+    Route: GET /users/{user_id}/tenant-roles
+
+    Path parameters:
+        user_id (int): The unique identifier of the user whose tenant roles to retrieve.
+
+    Returns:
+        List of user-tenant-role objects, each containing:
+            - id (int): Unique association identifier.
+            - user_id (int): The user's identifier.
+            - tenant_id (int): The tenant identifier.
+            - role (str): Role in this tenant — one of "tenant_admin", "administrator", "sales_engineer", "customer".
+            - is_active (bool): Whether the user is active in this tenant.
+            - is_default (bool): Whether this is the user's default tenant.
+
+    Errors:
+        403 Forbidden: Caller is not a platform admin and user_id does not match their own.
+        401 Unauthorized: Missing or invalid authentication token.
+    """
     # Get the current user's actual role from the database
     # For platform admins, tenant_id will be None
     current_tenant_id = get_current_tenant_id(current_user)
@@ -591,7 +768,7 @@ def update_user_tenant_role(
         )
 
     # Update fields
-    update_dict = update_data.dict(exclude_unset=True)
+    update_dict = update_data.model_dump(exclude_unset=True)
     for field, value in update_dict.items():
         setattr(user_tenant_role, field, value)
 

@@ -1,6 +1,6 @@
 """Success criteria, comment, and resource schemas"""
 
-from pydantic import BaseModel, validator
+from pydantic import BaseModel, field_validator, model_validator, ConfigDict
 from typing import Optional
 from datetime import datetime
 from app.models.resource import ResourceType
@@ -35,14 +35,13 @@ class SuccessCriteriaUpdate(BaseModel):
 class SuccessCriteria(SuccessCriteriaBase):
     """Schema for success criteria response"""
 
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     poc_id: int
     achieved_value: Optional[str]
     is_met: bool
     created_at: datetime
-
-    class Config:
-        from_attributes = True
 
 
 class CommentBase(BaseModel):
@@ -52,42 +51,33 @@ class CommentBase(BaseModel):
     content: str
     is_internal: bool = False
 
-    @validator("content")
+    @field_validator("content")
+    @classmethod
     def validate_content_length(cls, v):
         if len(v) > 1000:
             raise ValueError("Content must be 1000 characters or less")
         return v
 
 
-class CommentCreate(CommentBase):
+class CommentCreate(BaseModel):
     """Schema for creating a comment"""
 
+    subject: str
+    content: str
+    is_internal: bool = False
     poc_task_id: Optional[int] = None
     poc_task_group_id: Optional[int] = None
 
-    @validator("poc_task_id", "poc_task_group_id", pre=False, always=True)
-    def validate_task_or_taskgroup(cls, v, values):
-        """Ensure comment is associated with either a task or task group"""
-        # Get both values from the current validation state
-        poc_task_id = (
-            values.get("poc_task_id") if "poc_task_id" in values else None
-        )
-        poc_task_group_id = (
-            values.get("poc_task_group_id")
-            if "poc_task_group_id" in values
-            else None
-        )
-
-        # If we're validating poc_task_id and it wasn't set yet, get from values
-        if "poc_task_id" not in values and hasattr(cls, "__fields__"):
-            poc_task_id = None
-        if "poc_task_group_id" not in values and hasattr(cls, "__fields__"):
-            poc_task_group_id = None
-
+    @field_validator("content")
+    @classmethod
+    def validate_content_length(cls, v):
+        if len(v) > 1000:
+            raise ValueError("Content must be 1000 characters or less")
         return v
 
-    def validate_at_least_one_task(self):
-        """Validate that at least one of poc_task_id or poc_task_group_id is set"""
+    @model_validator(mode="after")
+    def validate_task_or_taskgroup(self):
+        """Ensure comment is associated with either a task or task group"""
         if not self.poc_task_id and not self.poc_task_group_id:
             raise ValueError(
                 "Comment must be associated with either a task (poc_task_id) or task group (poc_task_group_id)"
@@ -96,6 +86,7 @@ class CommentCreate(CommentBase):
             raise ValueError(
                 "Comment must be associated with either a task or task group, not both"
             )
+        return self
 
 
 class CommentUpdate(BaseModel):
@@ -105,8 +96,9 @@ class CommentUpdate(BaseModel):
     content: Optional[str] = None
     is_internal: Optional[bool] = None
 
-    @validator("content")
-    def validate_content_length(cls, v):
+    @field_validator("content")
+    @classmethod
+    def validate_content_length_update(cls, v):
         if v and len(v) > 1000:
             raise ValueError("Content must be 1000 characters or less")
         return v
@@ -114,6 +106,8 @@ class CommentUpdate(BaseModel):
 
 class Comment(CommentBase):
     """Schema for comment response"""
+
+    model_config = ConfigDict(from_attributes=True)
 
     id: int
     user_id: Optional[int]
@@ -125,9 +119,6 @@ class Comment(CommentBase):
     guest_name: Optional[str] = None
     guest_email: Optional[str] = None
     user: Optional[dict] = None
-
-    class Config:
-        from_attributes = True
 
 
 class ResourceBase(BaseModel):
@@ -159,12 +150,11 @@ class ResourceUpdate(BaseModel):
 class Resource(ResourceBase):
     """Schema for resource response"""
 
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     poc_id: Optional[int] = None
     poc_task_id: Optional[int] = None
     poc_task_group_id: Optional[int] = None
     success_criteria_id: Optional[int]
     created_at: datetime
-
-    class Config:
-        from_attributes = True

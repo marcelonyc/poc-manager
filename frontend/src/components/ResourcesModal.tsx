@@ -54,7 +54,7 @@ export default function ResourcesModal({
         content: '',
     })
 
-    const canEdit = !isPublicAccess && (user?.role === 'sales_engineer' || user?.role === 'administrator' || user?.role === 'tenant_admin')
+    const canEdit = !isPublicAccess && (user?.role === 'sales_engineer' || user?.role === 'account_executive' || user?.role === 'administrator' || user?.role === 'tenant_admin')
 
     const getBaseUrl = () => {
         if (isPublicAccess && publicAccessToken) {
