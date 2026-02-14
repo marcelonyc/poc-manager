@@ -317,7 +317,7 @@ async def _run_with_mcp_tools(
         async with httpx.AsyncClient(
             headers={"Authorization": f"Bearer {user_token}"},
             timeout=httpx.Timeout(
-                connect=30.0, read=300.0, write=30.0, pool=30.0
+                connect=60.0, read=300.0, write=60.0, pool=60.0
             ),
         ) as http_client, streamable_http_client(
             url=mcp_url,
