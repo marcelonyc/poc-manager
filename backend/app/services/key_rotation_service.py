@@ -1,7 +1,7 @@
 """Service for re-encrypting data with new keys during key rotation"""
 
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from sqlalchemy.orm import Session
 from sqlalchemy import and_
 from app.models.tenant import Tenant
@@ -70,7 +70,7 @@ class KeyRotationService:
                             stats["fields_updated"] += 1
 
                     if updated:
-                        tenant.updated_at = datetime.utcnow()
+                        tenant.updated_at = datetime.now(timezone.utc)
                         self.db.add(tenant)
                         stats["updated_tenants"] += 1
 
@@ -117,7 +117,7 @@ class KeyRotationService:
                         parsed = decrypt_value(integration.config_data)
                         if parsed != integration.config_data:
                             integration.config_data = encrypt_value(parsed)
-                            integration.updated_at = datetime.utcnow()
+                            integration.updated_at = datetime.now(timezone.utc)
                             self.db.add(integration)
                             stats["updated_integrations"] += 1
                             stats["fields_updated"] += 1
@@ -154,7 +154,7 @@ class KeyRotationService:
         integration_stats = self.re_encrypt_integration_configs()
 
         combined_stats = {
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "tenants": tenant_stats,
             "integrations": integration_stats,
             "total_fields_updated": (

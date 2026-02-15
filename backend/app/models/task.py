@@ -6,6 +6,7 @@ from sqlalchemy import (
     String,
     Boolean,
     DateTime,
+    Date,
     ForeignKey,
     Text,
     Enum as SQLEnum,
@@ -146,6 +147,10 @@ class POCTask(Base):
     # Ordering
     sort_order = Column(Integer, default=0)
 
+    # Task scheduling
+    start_date = Column(Date, nullable=True)
+    due_date = Column(Date, nullable=True)
+
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     completed_at = Column(DateTime(timezone=True), nullable=True)
@@ -188,6 +193,10 @@ class POCTaskGroup(Base):
     success_level = Column(Integer, nullable=True)  # 0-100
 
     sort_order = Column(Integer, default=0)
+
+    # Task group scheduling
+    start_date = Column(Date, nullable=True)
+    due_date = Column(Date, nullable=True)
 
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())

@@ -7,7 +7,7 @@ from app.database import get_db
 from app.models.user import User, UserRole
 from app.models.user_tenant_role import UserTenantRole
 from app.models.tenant import Tenant
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import secrets
 from app.models.invitation import Invitation, InvitationStatus
 from app.services.email import (
@@ -510,7 +510,7 @@ def invite_user(
         )
 
     token = secrets.token_urlsafe(32)
-    expires_at = datetime.utcnow() + timedelta(days=7)
+    expires_at = datetime.now(timezone.utc) + timedelta(days=7)
 
     invitation = Invitation(
         email=invite_data.email,

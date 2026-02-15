@@ -2,7 +2,7 @@
 
 import hashlib
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 from sqlalchemy.orm import Session
 from app.models.encryption_key import EncryptionKey
@@ -128,7 +128,7 @@ class EncryptionKeyService:
         )
         if old_primary:
             old_primary.is_primary = False
-            old_primary.last_rotation_date = datetime.utcnow()
+            old_primary.last_rotation_date = datetime.now(timezone.utc)
             old_primary.rotation_reason = reason
             old_primary.encrypted_fields_count = re_encrypt_count
             self.db.add(old_primary)

@@ -3,7 +3,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import List
-from datetime import datetime
+from datetime import datetime, timezone
 from app.database import get_db
 from app.models.user import User
 from app.models.task import (
@@ -478,6 +478,48 @@ def add_task_to_poc(
             status_code=status.HTTP_403_FORBIDDEN, detail="Access denied"
         )
 
+    # Validate and default task dates against POC timeline
+    start_date = task_data.start_date
+    due_date = task_data.due_date
+
+    # Default due_date to POC end_date if not provided
+    if due_date is None and poc.end_date:
+        due_date = poc.end_date
+
+    # Validate due_date is within POC timeline
+    if due_date is not None:
+        if poc.start_date and due_date < poc.start_date:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Task due date cannot be before the POC start date",
+            )
+        if poc.end_date and due_date > poc.end_date:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Task due date cannot be after the POC end date",
+            )
+
+    # Validate start_date is within POC timeline
+    if start_date is not None:
+        if poc.start_date and start_date < poc.start_date:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Task start date cannot be before the POC start date",
+            )
+        if poc.end_date and start_date > poc.end_date:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Task start date cannot be after the POC end date",
+            )
+
+    # Validate start_date <= due_date
+    if start_date is not None and due_date is not None:
+        if start_date > due_date:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Task start date cannot be after the task due date",
+            )
+
     # Create POC task
     poc_task = POCTask(
         poc_id=poc_id,
@@ -485,6 +527,8 @@ def add_task_to_poc(
         title=task_data.title,
         description=task_data.description,
         sort_order=task_data.sort_order,
+        start_date=start_date,
+        due_date=due_date,
         status=TaskStatus.NOT_STARTED,
     )
     db.add(poc_task)
@@ -618,6 +662,42 @@ def update_poc_task(
 
     update_data = task_data.model_dump(exclude_unset=True)
 
+    # Validate task dates against POC timeline
+    poc = db.query(POC).filter(POC.id == poc_id).first()
+    new_start = update_data.get("start_date", poc_task.start_date)
+    new_due = update_data.get("due_date", poc_task.due_date)
+
+    if new_due is not None and poc:
+        if poc.start_date and new_due < poc.start_date:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Task due date cannot be before the POC start date",
+            )
+        if poc.end_date and new_due > poc.end_date:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Task due date cannot be after the POC end date",
+            )
+
+    if new_start is not None and poc:
+        if poc.start_date and new_start < poc.start_date:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Task start date cannot be before the POC start date",
+            )
+        if poc.end_date and new_start > poc.end_date:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Task start date cannot be after the POC end date",
+            )
+
+    if new_start is not None and new_due is not None:
+        if new_start > new_due:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Task start date cannot be after the task due date",
+            )
+
     # Handle success_criteria_ids separately (junction table)
     if "success_criteria_ids" in update_data:
         criteria_ids = update_data.pop("success_criteria_ids")
@@ -639,7 +719,7 @@ def update_poc_task(
 
     # Mark completed_at if status changed to completed
     if task_data.status == TaskStatus.COMPLETED and not poc_task.completed_at:
-        poc_task.completed_at = datetime.utcnow()
+        poc_task.completed_at = datetime.now(timezone.utc)
 
     db.commit()
     db.refresh(poc_task)
@@ -887,6 +967,48 @@ def add_task_group_to_poc(
         sort_order=group_data.sort_order,
         status=TaskStatus.NOT_STARTED,
     )
+
+    # Validate and default task group dates against POC timeline
+    start_date = group_data.start_date
+    due_date = group_data.due_date
+
+    if due_date is None and poc.end_date:
+        due_date = poc.end_date
+
+    if due_date is not None:
+        if poc.start_date and due_date < poc.start_date:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Task group due date cannot be before the POC start date",
+            )
+        if poc.end_date and due_date > poc.end_date:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Task group due date cannot be after the POC end date",
+            )
+
+    if start_date is not None:
+        if poc.start_date and start_date < poc.start_date:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Task group start date cannot be before the POC start date",
+            )
+        if poc.end_date and start_date > poc.end_date:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Task group start date cannot be after the POC end date",
+            )
+
+    if start_date is not None and due_date is not None:
+        if start_date > due_date:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Task group start date cannot be after the task group due date",
+            )
+
+    poc_task_group.start_date = start_date
+    poc_task_group.due_date = due_date
+
     db.add(poc_task_group)
     db.flush()
 
@@ -1043,6 +1165,43 @@ def update_poc_task_group(
         )
 
     update_data = group_data.model_dump(exclude_unset=True)
+
+    # Validate task group dates against POC timeline
+    poc = db.query(POC).filter(POC.id == poc_id).first()
+    new_start = update_data.get("start_date", poc_group.start_date)
+    new_due = update_data.get("due_date", poc_group.due_date)
+
+    if new_due is not None and poc:
+        if poc.start_date and new_due < poc.start_date:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Task group due date cannot be before the POC start date",
+            )
+        if poc.end_date and new_due > poc.end_date:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Task group due date cannot be after the POC end date",
+            )
+
+    if new_start is not None and poc:
+        if poc.start_date and new_start < poc.start_date:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Task group start date cannot be before the POC start date",
+            )
+        if poc.end_date and new_start > poc.end_date:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Task group start date cannot be after the POC end date",
+            )
+
+    if new_start is not None and new_due is not None:
+        if new_start > new_due:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Task group start date cannot be after the task group due date",
+            )
+
     for field, value in update_data.items():
         setattr(poc_group, field, value)
 
@@ -1050,7 +1209,7 @@ def update_poc_task_group(
         group_data.status == TaskStatus.COMPLETED
         and not poc_group.completed_at
     ):
-        poc_group.completed_at = datetime.utcnow()
+        poc_group.completed_at = datetime.now(timezone.utc)
 
     db.commit()
     db.refresh(poc_group)

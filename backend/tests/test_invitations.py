@@ -1,7 +1,7 @@
 """Tests for Platform Admin invitation functionality"""
 
 import pytest
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from app.models.user import User, UserRole
 from app.models.invitation import Invitation, InvitationStatus
 from app.models.tenant import Tenant
@@ -89,7 +89,7 @@ def test_list_invitations(client, platform_admin_token, db_session):
             token=f"token{i}",
             status=InvitationStatus.PENDING,
             invited_by_email="admin@example.com",
-            expires_at=datetime.utcnow() + timedelta(days=7),
+            expires_at=datetime.now(timezone.utc) + timedelta(days=7),
         )
         db_session.add(invitation)
     db_session.commit()
@@ -120,7 +120,7 @@ def test_validate_invitation_valid(client, db_session):
         token="validtoken123",
         status=InvitationStatus.PENDING,
         invited_by_email="admin@example.com",
-        expires_at=datetime.utcnow() + timedelta(days=7),
+        expires_at=datetime.now(timezone.utc) + timedelta(days=7),
     )
     db_session.add(invitation)
     db_session.commit()
@@ -146,7 +146,7 @@ def test_validate_invitation_expired(client, db_session):
         token="expiredtoken123",
         status=InvitationStatus.PENDING,
         invited_by_email="admin@example.com",
-        expires_at=datetime.utcnow() - timedelta(days=1),  # Expired
+        expires_at=datetime.now(timezone.utc) - timedelta(days=1),  # Expired
     )
     db_session.add(invitation)
     db_session.commit()
@@ -164,7 +164,7 @@ def test_accept_invitation(client, db_session):
         token="accepttoken123",
         status=InvitationStatus.PENDING,
         invited_by_email="admin@example.com",
-        expires_at=datetime.utcnow() + timedelta(days=7),
+        expires_at=datetime.now(timezone.utc) + timedelta(days=7),
     )
     db_session.add(invitation)
     db_session.commit()
@@ -200,7 +200,7 @@ def test_accept_invitation_expired(client, db_session):
         token="expiredtoken456",
         status=InvitationStatus.PENDING,
         invited_by_email="admin@example.com",
-        expires_at=datetime.utcnow() - timedelta(days=1),
+        expires_at=datetime.now(timezone.utc) - timedelta(days=1),
     )
     db_session.add(invitation)
     db_session.commit()
@@ -221,7 +221,7 @@ def test_revoke_invitation(client, platform_admin_token, db_session):
         token="revoketoken123",
         status=InvitationStatus.PENDING,
         invited_by_email="admin@example.com",
-        expires_at=datetime.utcnow() + timedelta(days=7),
+        expires_at=datetime.now(timezone.utc) + timedelta(days=7),
     )
     db_session.add(invitation)
     db_session.commit()
@@ -249,7 +249,7 @@ def test_revoke_invitation_non_platform_admin(
         token="testtoken123",
         status=InvitationStatus.PENDING,
         invited_by_email="admin@example.com",
-        expires_at=datetime.utcnow() + timedelta(days=7),
+        expires_at=datetime.now(timezone.utc) + timedelta(days=7),
     )
     db_session.add(invitation)
     db_session.commit()
@@ -271,8 +271,8 @@ def test_revoke_invitation_already_accepted(
         token="acceptedtoken123",
         status=InvitationStatus.ACCEPTED,
         invited_by_email="admin@example.com",
-        expires_at=datetime.utcnow() + timedelta(days=7),
-        accepted_at=datetime.utcnow(),
+        expires_at=datetime.now(timezone.utc) + timedelta(days=7),
+        accepted_at=datetime.now(timezone.utc),
     )
     db_session.add(invitation)
     db_session.commit()
@@ -301,7 +301,7 @@ def test_accept_team_member_invitation_with_role_and_tenant(
         invited_by_email="admin@tenant.com",
         role="sales_engineer",
         tenant_id=tenant.id,
-        expires_at=datetime.utcnow() + timedelta(days=7),
+        expires_at=datetime.now(timezone.utc) + timedelta(days=7),
     )
     db_session.add(invitation)
     db_session.commit()
@@ -356,7 +356,7 @@ def test_validate_team_member_invitation_shows_role_and_tenant(
         invited_by_email="admin@tenant.com",
         role="administrator",
         tenant_id=tenant.id,
-        expires_at=datetime.utcnow() + timedelta(days=7),
+        expires_at=datetime.now(timezone.utc) + timedelta(days=7),
     )
     db_session.add(invitation)
     db_session.commit()
@@ -379,7 +379,7 @@ def test_accept_invitation_without_role_defaults_to_platform_admin(
         token="legacytoken123",
         status=InvitationStatus.PENDING,
         invited_by_email="admin@example.com",
-        expires_at=datetime.utcnow() + timedelta(days=7),
+        expires_at=datetime.now(timezone.utc) + timedelta(days=7),
     )
     db_session.add(invitation)
     db_session.commit()

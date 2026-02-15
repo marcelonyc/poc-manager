@@ -8,7 +8,7 @@ generation without tools is never allowed.
 import asyncio
 import logging
 import uuid
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Dict, List, Optional, Any
 
 from app.config import settings
@@ -65,7 +65,7 @@ def _get_mcp_tool_names() -> List[str]:
 
 def _cleanup_expired_sessions():
     """Remove sessions that have timed out."""
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     expired = [
         sid
         for sid, session in _chat_sessions.items()
@@ -88,7 +88,7 @@ def get_or_create_session(
         session = _chat_sessions[session_id]
         # Verify session belongs to same user and tenant
         if session["user_id"] == user_id and session["tenant_id"] == tenant_id:
-            session["last_activity"] = datetime.utcnow()
+            session["last_activity"] = datetime.now(timezone.utc)
             return session
 
     # Create new session
@@ -97,8 +97,8 @@ def get_or_create_session(
         "session_id": new_id,
         "user_id": user_id,
         "tenant_id": tenant_id,
-        "created_at": datetime.utcnow(),
-        "last_activity": datetime.utcnow(),
+        "created_at": datetime.now(timezone.utc),
+        "last_activity": datetime.now(timezone.utc),
         "messages": [],
     }
     _chat_sessions[new_id] = session
@@ -162,7 +162,7 @@ async def chat_with_assistant(
         {
             "role": "user",
             "content": user_message,
-            "timestamp": datetime.utcnow(),
+            "timestamp": datetime.now(timezone.utc),
         }
     )
 
@@ -200,6 +200,7 @@ async def chat_with_assistant(
         "10. ZERO FABRICATION: Do NOT invent names, email addresses, "
         "counts, percentages, or any data point. Even a single made-up "
         "value is a critical violation.\n"
+        f"Today is {datetime.now(timezone.utc).strftime('%Y-%m-%d')}."
     )
 
     chat_history = [
@@ -265,10 +266,10 @@ async def chat_with_assistant(
         {
             "role": "assistant",
             "content": response_text,
-            "timestamp": datetime.utcnow(),
+            "timestamp": datetime.now(timezone.utc),
         }
     )
-    session["last_activity"] = datetime.utcnow()
+    session["last_activity"] = datetime.now(timezone.utc)
 
     return response_text
 

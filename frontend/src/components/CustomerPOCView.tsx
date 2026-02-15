@@ -1,8 +1,12 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { api } from '../lib/api'
 import toast from 'react-hot-toast'
 import CommentsModal from './CommentsModal'
 import ResourcesModal from './ResourcesModal'
+import TaskCalendar from './TaskCalendar'
+import type { CalendarTask } from './TaskCalendar'
+import TaskDetailModal from './TaskDetailModal'
+import { useAuthStore } from '../store/authStore'
 
 interface TaskAssignee {
     id: number
@@ -17,6 +21,8 @@ interface POCTask {
     title: string
     description: string | null
     status?: string
+    start_date?: string
+    due_date?: string
     success_criteria_ids?: number[]
     assignees?: TaskAssignee[]
 }
@@ -28,6 +34,8 @@ interface POCTaskGroup {
     status?: string
     success_criteria_ids?: number[]
     tasks?: POCTask[]
+    start_date?: string
+    due_date?: string
 }
 
 interface CustomerPOCViewProps {
@@ -48,7 +56,8 @@ export default function CustomerPOCView({ pocId, isPublicAccess = false, publicP
     const [expandedGroups, setExpandedGroups] = useState<Set<number>>(new Set())
     const [resources, setResources] = useState<any[]>([])
     const [successCriteria, setSuccessCriteria] = useState<any[]>([])
-    const [activeTab, setActiveTab] = useState<'dashboard' | 'basic' | 'tasks' | 'resources'>('dashboard')
+    const [activeTab, setActiveTab] = useState<'dashboard' | 'basic' | 'tasks' | 'calendar' | 'resources'>('dashboard')
+    const [calendarDetailTask, setCalendarDetailTask] = useState<CalendarTask | null>(null)
     const [showCommentsModal, setShowCommentsModal] = useState(false)
     const [commentsModalTaskId, setCommentsModalTaskId] = useState<number | undefined>()
     const [commentsModalTaskGroupId, setCommentsModalTaskGroupId] = useState<number | undefined>()
@@ -60,6 +69,10 @@ export default function CustomerPOCView({ pocId, isPublicAccess = false, publicP
     const [resourcesModalTaskId, setResourcesModalTaskId] = useState<number | undefined>()
     const [resourcesModalTaskGroupId, setResourcesModalTaskGroupId] = useState<number | undefined>()
     const [resourcesModalTitle, setResourcesModalTitle] = useState('')
+
+    // Auth store for RBAC
+    const { user } = useAuthStore()
+    const isCustomer = user?.role === 'customer'
 
     // Criteria Task List Modal
     const [showCriteriaTaskListModal, setShowCriteriaTaskListModal] = useState(false)
@@ -117,6 +130,119 @@ export default function CustomerPOCView({ pocId, isPublicAccess = false, publicP
             toast.error('Failed to fetch POC data')
         } finally {
             setLoading(false)
+        }
+    }
+
+    // Auto-load all group tasks when switching to calendar tab
+    useEffect(() => {
+        if (activeTab !== 'calendar') return
+        const loadGroupTasks = async () => {
+            const groupsToLoad = pocTaskGroups.filter(g => g.id && !g.tasks)
+            if (groupsToLoad.length === 0) return
+            try {
+                const results = await Promise.all(
+                    groupsToLoad.map(g => api.get(`/tasks/pocs/${pocId}/task-groups/${g.id}/tasks`))
+                )
+                setPocTaskGroups(prev => prev.map(g => {
+                    const idx = groupsToLoad.findIndex(gl => gl.id === g.id)
+                    if (idx !== -1) return { ...g, tasks: results[idx].data }
+                    return g
+                }))
+            } catch {
+                // Silently ignore; tasks just won't appear in calendar
+            }
+        }
+        loadGroupTasks()
+    }, [activeTab, pocTaskGroups.length])
+
+    // ── Calendar data: flatten all tasks (individual + group tasks) ──
+    const calendarTasks = useMemo<CalendarTask[]>(() => {
+        const items: CalendarTask[] = []
+
+        // Individual POC tasks
+        pocTasks.forEach(t => {
+            if (t.id) {
+                items.push({
+                    id: t.id,
+                    title: t.title,
+                    description: t.description,
+                    status: t.status,
+                    start_date: t.start_date,
+                    due_date: t.due_date,
+                    assignees: t.assignees?.map(a => ({ id: a.id, participant_name: a.participant_name, participant_email: a.participant_email })),
+                    success_criteria_ids: t.success_criteria_ids,
+                })
+            }
+        })
+
+        // Task groups (shown as their own bar) and their nested tasks
+        pocTaskGroups.forEach(g => {
+            if (g.id) {
+                items.push({
+                    id: g.id,
+                    title: g.title,
+                    description: g.description,
+                    status: g.status,
+                    start_date: g.start_date,
+                    due_date: g.due_date,
+                    success_criteria_ids: g.success_criteria_ids,
+                    isGroup: true,
+                })
+            }
+            g.tasks?.forEach(t => {
+                if (t.id) {
+                    items.push({
+                        id: t.id,
+                        title: t.title,
+                        description: t.description,
+                        status: t.status,
+                        start_date: t.start_date,
+                        due_date: t.due_date,
+                        assignees: t.assignees?.map(a => ({ id: a.id, participant_name: a.participant_name, participant_email: a.participant_email })),
+                        success_criteria_ids: t.success_criteria_ids,
+                        groupId: g.id,
+                        groupTitle: g.title,
+                    })
+                }
+            })
+        })
+
+        return items
+    }, [pocTasks, pocTaskGroups])
+
+    // ── Handle calendar drag-and-drop date changes ──
+    const handleCalendarDateChange = async (taskId: number, startDate: string, dueDate: string, isGroup: boolean) => {
+        try {
+            if (isGroup) {
+                await api.put(`/tasks/pocs/${pocId}/task-groups/${taskId}`, {
+                    start_date: startDate,
+                    due_date: dueDate,
+                })
+                setPocTaskGroups(prev => prev.map(g =>
+                    g.id === taskId ? { ...g, start_date: startDate, due_date: dueDate } : g
+                ))
+            } else {
+                await api.put(`/tasks/pocs/${pocId}/tasks/${taskId}`, {
+                    start_date: startDate,
+                    due_date: dueDate,
+                })
+                // Update in individual tasks
+                setPocTasks(prev => prev.map(t =>
+                    t.id === taskId ? { ...t, start_date: startDate, due_date: dueDate } : t
+                ))
+                // Also update if it's inside a group
+                setPocTaskGroups(prev => prev.map(g => ({
+                    ...g,
+                    tasks: g.tasks?.map(t =>
+                        t.id === taskId ? { ...t, start_date: startDate, due_date: dueDate } : t
+                    ),
+                })))
+            }
+            toast.success('Task dates updated')
+        } catch (error: any) {
+            toast.error(error.response?.data?.detail || 'Failed to update task dates')
+            // Re-fetch to reset to server state
+            if (!isPublicAccess) fetchPOCData()
         }
     }
 
@@ -254,6 +380,15 @@ export default function CustomerPOCView({ pocId, isPublicAccess = false, publicP
                             }`}
                     >
                         Tasks & Groups ({pocTasks.length + pocTaskGroups.length})
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('calendar')}
+                        className={`py-4 px-4 border-b-2 font-medium text-sm ${activeTab === 'calendar'
+                            ? 'border-blue-500 text-blue-600'
+                            : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                            }`}
+                    >
+                        📅 Calendar
                     </button>
                     <button
                         onClick={() => setActiveTab('resources')}
@@ -537,6 +672,16 @@ export default function CustomerPOCView({ pocId, isPublicAccess = false, publicP
                                                     {task.description && (
                                                         <p className="text-sm text-gray-600 mt-1">{task.description}</p>
                                                     )}
+                                                    {(task.start_date || task.due_date) && (
+                                                        <div className="mt-1 flex items-center gap-3 text-xs text-gray-500">
+                                                            {task.start_date && (
+                                                                <span>📅 Start: {task.start_date}</span>
+                                                            )}
+                                                            {task.due_date && (
+                                                                <span>🏁 Due: {task.due_date}</span>
+                                                            )}
+                                                        </div>
+                                                    )}
                                                     {task.assignees && task.assignees.length > 0 && (
                                                         <div className="mt-2 flex flex-wrap gap-1">
                                                             <span className="text-xs text-gray-600 mr-1">Assigned to:</span>
@@ -617,6 +762,12 @@ export default function CustomerPOCView({ pocId, isPublicAccess = false, publicP
                                                             {group.description && (
                                                                 <p className="text-sm text-gray-600 mt-1">{group.description}</p>
                                                             )}
+                                                            {(group.start_date || group.due_date) && (
+                                                                <div className="mt-1 flex items-center gap-3 text-xs text-gray-500">
+                                                                    {group.start_date && <span>📅 Start: {group.start_date}</span>}
+                                                                    {group.due_date && <span>🏁 Due: {group.due_date}</span>}
+                                                                </div>
+                                                            )}
                                                         </div>
                                                     </div>
                                                     <div className="flex items-center gap-2">
@@ -665,6 +816,12 @@ export default function CustomerPOCView({ pocId, isPublicAccess = false, publicP
                                                                             <h5 className="font-medium text-gray-800 text-sm">{task.title}</h5>
                                                                             {task.description && (
                                                                                 <p className="text-sm text-gray-600 mt-1">{task.description}</p>
+                                                                            )}
+                                                                            {(task.start_date || task.due_date) && (
+                                                                                <div className="mt-1 flex items-center gap-3 text-xs text-gray-500">
+                                                                                    {task.start_date && <span>📅 Start: {task.start_date}</span>}
+                                                                                    {task.due_date && <span>🏁 Due: {task.due_date}</span>}
+                                                                                </div>
                                                                             )}
                                                                             {task.assignees && task.assignees.length > 0 && (
                                                                                 <div className="mt-2 flex flex-wrap gap-1">
@@ -716,6 +873,21 @@ export default function CustomerPOCView({ pocId, isPublicAccess = false, publicP
                                 )}
                             </div>
                         </div>
+                    </div>
+                )}
+
+                {/* Calendar Tab */}
+                {activeTab === 'calendar' && (
+                    <div className="space-y-4">
+                        <h3 className="text-lg font-semibold text-gray-900">Task Calendar</h3>
+                        <TaskCalendar
+                            tasks={calendarTasks}
+                            onTaskDateChange={isPublicAccess || isCustomer ? undefined : handleCalendarDateChange}
+                            onTaskClick={(task) => setCalendarDetailTask(task)}
+                            readOnly={isPublicAccess || isCustomer}
+                            pocStartDate={formData.start_date}
+                            pocEndDate={formData.end_date}
+                        />
                     </div>
                 )}
 
@@ -883,6 +1055,14 @@ export default function CustomerPOCView({ pocId, isPublicAccess = false, publicP
                         </div>
                     </div>
                 </div>
+            )}
+
+            {/* Calendar Task Detail Modal */}
+            {calendarDetailTask && (
+                <TaskDetailModal
+                    task={calendarDetailTask}
+                    onClose={() => setCalendarDetailTask(null)}
+                />
             )}
         </div>
     )

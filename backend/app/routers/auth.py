@@ -2,7 +2,7 @@
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 from app.database import get_db
 from app.models.user import User
@@ -78,7 +78,7 @@ def login(login_data: LoginRequest, db: Session = Depends(get_db)):
         )
 
     # Update last login
-    user.last_login = datetime.utcnow()
+    user.last_login = datetime.now(timezone.utc)
     db.commit()
 
     # Platform admins don't belong to any tenant - handle them specially

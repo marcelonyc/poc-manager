@@ -12,7 +12,7 @@ from fastapi import (
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 from typing import List
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import secrets
 import os
 import tempfile
@@ -455,7 +455,7 @@ async def add_participant(
 
         # Create invitation for both new and existing users
         token = secrets.token_urlsafe(32)
-        expires_at = datetime.utcnow() + timedelta(hours=24)
+        expires_at = datetime.now(timezone.utc) + timedelta(hours=24)
 
         invitation = POCInvitation(
             poc_id=poc_id,
@@ -1156,7 +1156,7 @@ def delete_public_link(
 
     # Soft delete the link
     public_link.is_deleted = True
-    public_link.deleted_at = datetime.utcnow()
+    public_link.deleted_at = datetime.now(timezone.utc)
     db.commit()
 
     return None

@@ -613,7 +613,7 @@ def get_platform_stats(
         403 Forbidden: Caller is not a platform admin.
         401 Unauthorized: Missing or invalid authentication token.
     """
-    from datetime import datetime, timedelta
+    from datetime import datetime, timedelta, timezone
 
     # Active and inactive tenants
     active_tenants = db.query(Tenant).filter(Tenant.is_active == True).count()
@@ -630,7 +630,7 @@ def get_platform_stats(
     )
 
     # Users logged in within last 24 hours
-    twenty_four_hours_ago = datetime.utcnow() - timedelta(hours=24)
+    twenty_four_hours_ago = datetime.now(timezone.utc) - timedelta(hours=24)
     recent_logins = (
         db.query(User).filter(User.last_login >= twenty_four_hours_ago).count()
     )

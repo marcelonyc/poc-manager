@@ -64,6 +64,8 @@ interface POCTask {
     success_criteria_ids: number[]
     sort_order: number
     status?: string
+    start_date?: string
+    due_date?: string
     assignees?: TaskAssignee[]
 }
 
@@ -75,6 +77,8 @@ interface POCTaskGroup {
     success_criteria_ids: number[]
     sort_order: number
     status?: string
+    start_date?: string
+    due_date?: string
     tasks?: POCTask[]
 }
 
@@ -152,13 +156,17 @@ export default function POCForm({ pocId, initialData, onClose }: POCFormProps) {
         title: '',
         description: '',
         success_criteria_ids: [],
-        sort_order: 0
+        sort_order: 0,
+        start_date: '',
+        due_date: formData.end_date || ''
     })
     const [newTaskGroup, setNewTaskGroup] = useState<POCTaskGroup>({
         title: '',
         description: '',
         success_criteria_ids: [],
-        sort_order: 0
+        sort_order: 0,
+        start_date: '',
+        due_date: formData.end_date || ''
     })
     const [showTaskForm, setShowTaskForm] = useState(false)
     const [showTaskGroupForm, setShowTaskGroupForm] = useState(false)
@@ -436,15 +444,20 @@ export default function POCForm({ pocId, initialData, onClose }: POCFormProps) {
 
         if (!pocId) {
             setPocTasks([...pocTasks, { ...newTask, id: Date.now(), sort_order: pocTasks.length }])
-            setNewTask({ title: '', description: '', success_criteria_ids: [], sort_order: 0 })
+            setNewTask({ title: '', description: '', success_criteria_ids: [], sort_order: 0, start_date: '', due_date: formData.end_date || '' })
             setShowTaskForm(false)
             return
         }
 
         try {
-            const response = await api.post(`/tasks/pocs/${pocId}/tasks`, newTask)
+            const payload = {
+                ...newTask,
+                start_date: newTask.start_date || null,
+                due_date: newTask.due_date || null,
+            }
+            const response = await api.post(`/tasks/pocs/${pocId}/tasks`, payload)
             setPocTasks([...pocTasks, response.data])
-            setNewTask({ title: '', description: '', success_criteria_ids: [], sort_order: 0 })
+            setNewTask({ title: '', description: '', success_criteria_ids: [], sort_order: 0, start_date: '', due_date: formData.end_date || '' })
             setShowTaskForm(false)
             toast.success('Task added')
         } catch (error: any) {
@@ -488,15 +501,20 @@ export default function POCForm({ pocId, initialData, onClose }: POCFormProps) {
 
         if (!pocId) {
             setPocTaskGroups([...pocTaskGroups, { ...newTaskGroup, id: Date.now(), sort_order: pocTaskGroups.length }])
-            setNewTaskGroup({ title: '', description: '', success_criteria_ids: [], sort_order: 0 })
+            setNewTaskGroup({ title: '', description: '', success_criteria_ids: [], sort_order: 0, start_date: '', due_date: formData.end_date || '' })
             setShowTaskGroupForm(false)
             return
         }
 
         try {
-            const response = await api.post(`/tasks/pocs/${pocId}/task-groups`, newTaskGroup)
+            const payload = {
+                ...newTaskGroup,
+                start_date: newTaskGroup.start_date || null,
+                due_date: newTaskGroup.due_date || null,
+            }
+            const response = await api.post(`/tasks/pocs/${pocId}/task-groups`, payload)
             setPocTaskGroups([...pocTaskGroups, response.data])
-            setNewTaskGroup({ title: '', description: '', success_criteria_ids: [], sort_order: 0 })
+            setNewTaskGroup({ title: '', description: '', success_criteria_ids: [], sort_order: 0, start_date: '', due_date: formData.end_date || '' })
             setShowTaskGroupForm(false)
             toast.success('Task group added')
         } catch (error: any) {
@@ -541,6 +559,34 @@ export default function POCForm({ pocId, initialData, onClose }: POCFormProps) {
             toast.success('Task status updated')
         } catch (error: any) {
             toast.error(formatErrorMessage(error, 'Failed to update task status'))
+        }
+    }
+
+    const handleUpdateTaskDates = async (taskId: number, field: 'start_date' | 'due_date', value: string) => {
+        if (!pocId) return
+        try {
+            const payload: any = { [field]: value || null }
+            await api.put(`/tasks/pocs/${pocId}/tasks/${taskId}`, payload)
+            const updated = { [field]: value || undefined }
+            setPocTasks(pocTasks.map(t => t.id === taskId ? { ...t, ...updated } : t))
+            setPocTaskGroups(pocTaskGroups.map(g => ({
+                ...g,
+                tasks: g.tasks?.map(t => t.id === taskId ? { ...t, ...updated } : t)
+            })))
+        } catch (error: any) {
+            toast.error(formatErrorMessage(error, 'Failed to update task date'))
+        }
+    }
+
+    const handleUpdateTaskGroupDates = async (groupId: number, field: 'start_date' | 'due_date', value: string) => {
+        if (!pocId) return
+        try {
+            const payload: any = { [field]: value || null }
+            await api.put(`/tasks/pocs/${pocId}/task-groups/${groupId}`, payload)
+            const updated = { [field]: value || undefined }
+            setPocTaskGroups(pocTaskGroups.map(g => g.id === groupId ? { ...g, ...updated } : g))
+        } catch (error: any) {
+            toast.error(formatErrorMessage(error, 'Failed to update task group date'))
         }
     }
 
@@ -1487,6 +1533,38 @@ export default function POCForm({ pocId, initialData, onClose }: POCFormProps) {
                                             className="w-full px-3 py-2 border border-gray-300 rounded-lg"
                                         />
 
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                                    Start Date
+                                                </label>
+                                                <input
+                                                    type="date"
+                                                    value={newTask.start_date || ''}
+                                                    min={formData.start_date || undefined}
+                                                    max={formData.end_date || undefined}
+                                                    onChange={(e) => setNewTask({ ...newTask, start_date: e.target.value })}
+                                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                                    Due Date
+                                                </label>
+                                                <input
+                                                    type="date"
+                                                    value={newTask.due_date || ''}
+                                                    min={formData.start_date || undefined}
+                                                    max={formData.end_date || undefined}
+                                                    onChange={(e) => setNewTask({ ...newTask, due_date: e.target.value })}
+                                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                                />
+                                                {formData.end_date && (
+                                                    <p className="text-xs text-gray-500 mt-1">Defaults to POC end date ({formData.end_date})</p>
+                                                )}
+                                            </div>
+                                        </div>
+
                                         <div>
                                             <label className="block text-sm font-medium text-gray-700 mb-2">
                                                 Link to Success Criteria (optional)
@@ -1532,7 +1610,7 @@ export default function POCForm({ pocId, initialData, onClose }: POCFormProps) {
                                             <button
                                                 onClick={() => {
                                                     setShowTaskForm(false)
-                                                    setNewTask({ title: '', description: '', success_criteria_ids: [], sort_order: 0 })
+                                                    setNewTask({ title: '', description: '', success_criteria_ids: [], sort_order: 0, start_date: '', due_date: formData.end_date || '' })
                                                 }}
                                                 className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
                                             >
@@ -1555,6 +1633,38 @@ export default function POCForm({ pocId, initialData, onClose }: POCFormProps) {
                                                     <h4 className="font-medium text-gray-900">{task.title}</h4>
                                                     {task.description && (
                                                         <p className="text-sm text-gray-600 mt-1">{task.description}</p>
+                                                    )}
+                                                    {(task.start_date || task.due_date) && (
+                                                        <div className="mt-1 flex items-center gap-3 text-xs text-gray-500">
+                                                            {task.start_date && (
+                                                                <span>📅 Start: {task.start_date}</span>
+                                                            )}
+                                                            {task.due_date && (
+                                                                <span>🏁 Due: {task.due_date}</span>
+                                                            )}
+                                                        </div>
+                                                    )}
+                                                    {pocId && (
+                                                        <div className="mt-2 flex items-center gap-3">
+                                                            <label className="text-xs text-gray-500">📅 Start:</label>
+                                                            <input
+                                                                type="date"
+                                                                value={task.start_date || ''}
+                                                                min={formData.start_date || undefined}
+                                                                max={formData.end_date || undefined}
+                                                                onChange={(e) => handleUpdateTaskDates(task.id!, 'start_date', e.target.value)}
+                                                                className="px-2 py-1 border border-gray-300 rounded text-xs"
+                                                            />
+                                                            <label className="text-xs text-gray-500">🏁 Due:</label>
+                                                            <input
+                                                                type="date"
+                                                                value={task.due_date || ''}
+                                                                min={formData.start_date || undefined}
+                                                                max={formData.end_date || undefined}
+                                                                onChange={(e) => handleUpdateTaskDates(task.id!, 'due_date', e.target.value)}
+                                                                className="px-2 py-1 border border-gray-300 rounded text-xs"
+                                                            />
+                                                        </div>
                                                     )}
                                                     {task.success_criteria_ids && task.success_criteria_ids.length > 0 && (
                                                         <div className="mt-2 flex flex-wrap gap-1">
@@ -1661,7 +1771,7 @@ export default function POCForm({ pocId, initialData, onClose }: POCFormProps) {
                                 <h3 className="text-lg font-semibold text-gray-900">Task Groups</h3>
                                 <button
                                     onClick={() => {
-                                        setNewTaskGroup({ title: '', description: '', success_criteria_ids: [], sort_order: pocTaskGroups.length })
+                                        setNewTaskGroup({ title: '', description: '', success_criteria_ids: [], sort_order: pocTaskGroups.length, start_date: '', due_date: formData.end_date || '' })
                                         setShowTaskGroupForm(true)
                                     }}
                                     className="px-3 py-1 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm"
@@ -1713,6 +1823,38 @@ export default function POCForm({ pocId, initialData, onClose }: POCFormProps) {
                                             className="w-full px-3 py-2 border border-gray-300 rounded-lg"
                                         />
 
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                                    Start Date
+                                                </label>
+                                                <input
+                                                    type="date"
+                                                    value={newTaskGroup.start_date || ''}
+                                                    min={formData.start_date || undefined}
+                                                    max={formData.end_date || undefined}
+                                                    onChange={(e) => setNewTaskGroup({ ...newTaskGroup, start_date: e.target.value })}
+                                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                                    Due Date
+                                                </label>
+                                                <input
+                                                    type="date"
+                                                    value={newTaskGroup.due_date || ''}
+                                                    min={formData.start_date || undefined}
+                                                    max={formData.end_date || undefined}
+                                                    onChange={(e) => setNewTaskGroup({ ...newTaskGroup, due_date: e.target.value })}
+                                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                                />
+                                                {formData.end_date && (
+                                                    <p className="text-xs text-gray-500 mt-1">Defaults to POC end date ({formData.end_date})</p>
+                                                )}
+                                            </div>
+                                        </div>
+
                                         <div>
                                             <label className="block text-sm font-medium text-gray-700 mb-2">
                                                 Link to Success Criteria (optional)
@@ -1758,7 +1900,7 @@ export default function POCForm({ pocId, initialData, onClose }: POCFormProps) {
                                             <button
                                                 onClick={() => {
                                                     setShowTaskGroupForm(false)
-                                                    setNewTaskGroup({ title: '', description: '', success_criteria_ids: [], sort_order: 0 })
+                                                    setNewTaskGroup({ title: '', description: '', success_criteria_ids: [], sort_order: 0, start_date: '', due_date: formData.end_date || '' })
                                                 }}
                                                 className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
                                             >
@@ -1801,6 +1943,34 @@ export default function POCForm({ pocId, initialData, onClose }: POCFormProps) {
                                                             </div>
                                                             {group.description && (
                                                                 <p className="text-sm text-gray-600 mt-1">{group.description}</p>
+                                                            )}
+                                                            {(group.start_date || group.due_date) && !pocId && (
+                                                                <div className="mt-1 flex items-center gap-3 text-xs text-gray-500">
+                                                                    {group.start_date && <span>📅 Start: {group.start_date}</span>}
+                                                                    {group.due_date && <span>🏁 Due: {group.due_date}</span>}
+                                                                </div>
+                                                            )}
+                                                            {pocId && (
+                                                                <div className="mt-2 flex items-center gap-3">
+                                                                    <label className="text-xs text-gray-500">📅 Start:</label>
+                                                                    <input
+                                                                        type="date"
+                                                                        value={group.start_date || ''}
+                                                                        min={formData.start_date || undefined}
+                                                                        max={formData.end_date || undefined}
+                                                                        onChange={(e) => handleUpdateTaskGroupDates(group.id!, 'start_date', e.target.value)}
+                                                                        className="px-2 py-1 border border-gray-300 rounded text-xs"
+                                                                    />
+                                                                    <label className="text-xs text-gray-500">🏁 Due:</label>
+                                                                    <input
+                                                                        type="date"
+                                                                        value={group.due_date || ''}
+                                                                        min={formData.start_date || undefined}
+                                                                        max={formData.end_date || undefined}
+                                                                        onChange={(e) => handleUpdateTaskGroupDates(group.id!, 'due_date', e.target.value)}
+                                                                        className="px-2 py-1 border border-gray-300 rounded text-xs"
+                                                                    />
+                                                                </div>
                                                             )}
                                                             {group.success_criteria_ids && group.success_criteria_ids.length > 0 && (
                                                                 <div className="mt-2 flex flex-wrap gap-1">
@@ -1890,6 +2060,34 @@ export default function POCForm({ pocId, initialData, onClose }: POCFormProps) {
                                                                             <h5 className="font-medium text-gray-800 text-sm">{task.title}</h5>
                                                                             {task.description && (
                                                                                 <p className="text-sm text-gray-600 mt-1">{task.description}</p>
+                                                                            )}
+                                                                            {pocId && (
+                                                                                <div className="mt-2 flex items-center gap-2">
+                                                                                    <label className="text-xs text-gray-500">📅</label>
+                                                                                    <input
+                                                                                        type="date"
+                                                                                        value={task.start_date || ''}
+                                                                                        min={formData.start_date || undefined}
+                                                                                        max={formData.end_date || undefined}
+                                                                                        onChange={(e) => handleUpdateTaskDates(task.id!, 'start_date', e.target.value)}
+                                                                                        className="px-1 py-0.5 border border-gray-300 rounded text-xs"
+                                                                                    />
+                                                                                    <label className="text-xs text-gray-500">🏁</label>
+                                                                                    <input
+                                                                                        type="date"
+                                                                                        value={task.due_date || ''}
+                                                                                        min={formData.start_date || undefined}
+                                                                                        max={formData.end_date || undefined}
+                                                                                        onChange={(e) => handleUpdateTaskDates(task.id!, 'due_date', e.target.value)}
+                                                                                        className="px-1 py-0.5 border border-gray-300 rounded text-xs"
+                                                                                    />
+                                                                                </div>
+                                                                            )}
+                                                                            {!pocId && (task.start_date || task.due_date) && (
+                                                                                <div className="mt-1 flex items-center gap-3 text-xs text-gray-500">
+                                                                                    {task.start_date && <span>📅 Start: {task.start_date}</span>}
+                                                                                    {task.due_date && <span>🏁 Due: {task.due_date}</span>}
+                                                                                </div>
                                                                             )}
                                                                             {task.success_criteria_ids && task.success_criteria_ids.length > 0 && (
                                                                                 <div className="mt-2 flex flex-wrap gap-1">

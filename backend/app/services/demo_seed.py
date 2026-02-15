@@ -6,7 +6,7 @@ from app.models.user import User, UserRole
 from app.models.user_tenant_role import UserTenantRole
 from app.models.task import Task, TaskGroup, POCTask, POCTaskGroup, TaskStatus
 from app.models.poc import POC, POCStatus, POCParticipant
-from app.models.success_criteria import SuccessCriteria
+from app.models.success_criteria import SuccessCriteria, TaskSuccessCriteria
 from app.models.product import Product
 from app.auth import get_password_hash
 
@@ -237,7 +237,9 @@ def seed_demo_account(db: Session, tenant_id: int, tenant_admin_user_id: int):
     for participant in poc1_participants:
         db.add(participant)
 
-    # Add tasks to POC1
+    # Add tasks to POC1 (with start_date / due_date)
+    poc1_start = poc1.start_date
+    poc1_end = poc1.end_date
     poc1_tasks = [
         POCTask(
             poc_id=poc1.id,
@@ -247,6 +249,8 @@ def seed_demo_account(db: Session, tenant_id: int, tenant_admin_user_id: int):
             status=TaskStatus.COMPLETED,
             success_level=95,
             sort_order=1,
+            start_date=poc1_start,
+            due_date=poc1_start + timedelta(days=5),
         ),
         POCTask(
             poc_id=poc1.id,
@@ -256,6 +260,8 @@ def seed_demo_account(db: Session, tenant_id: int, tenant_admin_user_id: int):
             status=TaskStatus.COMPLETED,
             success_level=100,
             sort_order=2,
+            start_date=poc1_start + timedelta(days=3),
+            due_date=poc1_start + timedelta(days=10),
         ),
         POCTask(
             poc_id=poc1.id,
@@ -265,6 +271,8 @@ def seed_demo_account(db: Session, tenant_id: int, tenant_admin_user_id: int):
             status=TaskStatus.IN_PROGRESS,
             success_level=60,
             sort_order=3,
+            start_date=poc1_start + timedelta(days=8),
+            due_date=poc1_start + timedelta(days=20),
         ),
         POCTask(
             poc_id=poc1.id,
@@ -273,10 +281,13 @@ def seed_demo_account(db: Session, tenant_id: int, tenant_admin_user_id: int):
             description=tasks[3].description,
             status=TaskStatus.NOT_STARTED,
             sort_order=4,
+            start_date=poc1_start + timedelta(days=18),
+            due_date=poc1_end,
         ),
     ]
     for task in poc1_tasks:
         db.add(task)
+    db.flush()
 
     # Add task group to POC1
     poc1_task_group = POCTaskGroup(
@@ -287,6 +298,8 @@ def seed_demo_account(db: Session, tenant_id: int, tenant_admin_user_id: int):
         status=TaskStatus.IN_PROGRESS,
         success_level=75,
         sort_order=0,
+        start_date=poc1_start + timedelta(days=2),
+        due_date=poc1.end_date,
     )
     db.add(poc1_task_group)
 
@@ -319,6 +332,41 @@ def seed_demo_account(db: Session, tenant_id: int, tenant_admin_user_id: int):
     ]
     for criteria in poc1_criteria:
         db.add(criteria)
+    db.flush()
+
+    # Link POC1 tasks to success criteria
+    poc1_task_criteria = [
+        # "Initial Requirements Gathering" → "Real-time inventory sync"
+        TaskSuccessCriteria(
+            success_criteria_id=poc1_criteria[0].id,
+            poc_task_id=poc1_tasks[0].id,
+        ),
+        # "Environment Setup" → "Handle 1000+ products"
+        TaskSuccessCriteria(
+            success_criteria_id=poc1_criteria[1].id,
+            poc_task_id=poc1_tasks[1].id,
+        ),
+        # "Product Demo" → "Real-time inventory sync" + "Error handling"
+        TaskSuccessCriteria(
+            success_criteria_id=poc1_criteria[0].id,
+            poc_task_id=poc1_tasks[2].id,
+        ),
+        TaskSuccessCriteria(
+            success_criteria_id=poc1_criteria[2].id,
+            poc_task_id=poc1_tasks[2].id,
+        ),
+        # "Integration Testing" → "Handle 1000+ products" + "Error handling"
+        TaskSuccessCriteria(
+            success_criteria_id=poc1_criteria[1].id,
+            poc_task_id=poc1_tasks[3].id,
+        ),
+        TaskSuccessCriteria(
+            success_criteria_id=poc1_criteria[2].id,
+            poc_task_id=poc1_tasks[3].id,
+        ),
+    ]
+    for link in poc1_task_criteria:
+        db.add(link)
 
     # POC 2 - Completed
     poc2 = POC(
@@ -347,7 +395,9 @@ def seed_demo_account(db: Session, tenant_id: int, tenant_admin_user_id: int):
     for participant in poc2_participants:
         db.add(participant)
 
-    # Add tasks to POC2 (all completed)
+    # Add tasks to POC2 (all completed, with start_date / due_date)
+    poc2_start = poc2.start_date
+    poc2_end = poc2.end_date
     poc2_tasks = [
         POCTask(
             poc_id=poc2.id,
@@ -357,6 +407,8 @@ def seed_demo_account(db: Session, tenant_id: int, tenant_admin_user_id: int):
             status=TaskStatus.COMPLETED,
             success_level=100,
             sort_order=1,
+            start_date=poc2_start,
+            due_date=poc2_start + timedelta(days=7),
         ),
         POCTask(
             poc_id=poc2.id,
@@ -366,6 +418,8 @@ def seed_demo_account(db: Session, tenant_id: int, tenant_admin_user_id: int):
             status=TaskStatus.COMPLETED,
             success_level=100,
             sort_order=2,
+            start_date=poc2_start + timedelta(days=5),
+            due_date=poc2_start + timedelta(days=14),
         ),
         POCTask(
             poc_id=poc2.id,
@@ -375,6 +429,8 @@ def seed_demo_account(db: Session, tenant_id: int, tenant_admin_user_id: int):
             status=TaskStatus.COMPLETED,
             success_level=95,
             sort_order=3,
+            start_date=poc2_start + timedelta(days=12),
+            due_date=poc2_start + timedelta(days=28),
         ),
         POCTask(
             poc_id=poc2.id,
@@ -384,10 +440,13 @@ def seed_demo_account(db: Session, tenant_id: int, tenant_admin_user_id: int):
             status=TaskStatus.COMPLETED,
             success_level=100,
             sort_order=4,
+            start_date=poc2_start + timedelta(days=30),
+            due_date=poc2_end,
         ),
     ]
     for task in poc2_tasks:
         db.add(task)
+    db.flush()
 
     # Add task groups to POC2 (both completed)
     poc2_task_group1 = POCTaskGroup(
@@ -398,6 +457,8 @@ def seed_demo_account(db: Session, tenant_id: int, tenant_admin_user_id: int):
         status=TaskStatus.COMPLETED,
         success_level=100,
         sort_order=0,
+        start_date=poc2_start,
+        due_date=poc2_start + timedelta(days=20),
     )
     db.add(poc2_task_group1)
 
@@ -409,6 +470,8 @@ def seed_demo_account(db: Session, tenant_id: int, tenant_admin_user_id: int):
         status=TaskStatus.COMPLETED,
         success_level=98,
         sort_order=1,
+        start_date=poc2_start + timedelta(days=10),
+        due_date=poc2.end_date,
     )
     db.add(poc2_task_group2)
 
@@ -441,6 +504,45 @@ def seed_demo_account(db: Session, tenant_id: int, tenant_admin_user_id: int):
     ]
     for criteria in poc2_criteria:
         db.add(criteria)
+    db.flush()
+
+    # Link POC2 tasks to success criteria
+    poc2_task_criteria = [
+        # "Initial Requirements Gathering" → "Custom dashboard widgets"
+        TaskSuccessCriteria(
+            success_criteria_id=poc2_criteria[0].id,
+            poc_task_id=poc2_tasks[0].id,
+        ),
+        # "Environment Setup" → "Real-time data updates"
+        TaskSuccessCriteria(
+            success_criteria_id=poc2_criteria[1].id,
+            poc_task_id=poc2_tasks[1].id,
+        ),
+        # "Product Demo" → "Custom dashboard widgets" + "Real-time data updates"
+        TaskSuccessCriteria(
+            success_criteria_id=poc2_criteria[0].id,
+            poc_task_id=poc2_tasks[2].id,
+        ),
+        TaskSuccessCriteria(
+            success_criteria_id=poc2_criteria[1].id,
+            poc_task_id=poc2_tasks[2].id,
+        ),
+        # "Final Presentation" → all three criteria
+        TaskSuccessCriteria(
+            success_criteria_id=poc2_criteria[0].id,
+            poc_task_id=poc2_tasks[3].id,
+        ),
+        TaskSuccessCriteria(
+            success_criteria_id=poc2_criteria[1].id,
+            poc_task_id=poc2_tasks[3].id,
+        ),
+        TaskSuccessCriteria(
+            success_criteria_id=poc2_criteria[2].id,
+            poc_task_id=poc2_tasks[3].id,
+        ),
+    ]
+    for link in poc2_task_criteria:
+        db.add(link)
 
     db.commit()
 

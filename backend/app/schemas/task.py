@@ -2,7 +2,7 @@
 
 from pydantic import BaseModel, ConfigDict
 from typing import Optional, List, TYPE_CHECKING
-from datetime import datetime
+from datetime import datetime, date
 from app.models.task import TaskStatus
 
 if TYPE_CHECKING:
@@ -80,6 +80,8 @@ class POCTaskBase(BaseModel):
     title: str
     description: Optional[str] = None
     sort_order: Optional[int] = 0
+    start_date: Optional[date] = None
+    due_date: Optional[date] = None
 
 
 class POCTaskCreate(POCTaskBase):
@@ -98,6 +100,8 @@ class POCTaskUpdate(BaseModel):
     success_level: Optional[int] = None
     sort_order: Optional[int] = None
     success_criteria_ids: Optional[List[int]] = None
+    start_date: Optional[date] = None
+    due_date: Optional[date] = None
 
 
 class POCTaskAssignee(BaseModel):
@@ -128,6 +132,8 @@ class POCTask(POCTaskBase):
     success_level: Optional[int]
     created_at: datetime
     completed_at: Optional[datetime]
+    start_date: Optional[date] = None
+    due_date: Optional[date] = None
     assignees: List[POCTaskAssignee] = []
     success_criteria_ids: List[int] = []
 
@@ -140,6 +146,8 @@ class POCTaskGroupBase(BaseModel):
     title: str
     description: Optional[str] = None
     sort_order: Optional[int] = 0
+    start_date: Optional[date] = None
+    due_date: Optional[date] = None
 
 
 class POCTaskGroupCreate(POCTaskGroupBase):
@@ -157,6 +165,8 @@ class POCTaskGroupUpdate(BaseModel):
     status: Optional[TaskStatus] = None
     success_level: Optional[int] = None
     sort_order: Optional[int] = None
+    start_date: Optional[date] = None
+    due_date: Optional[date] = None
 
 
 class POCTaskGroup(POCTaskGroupBase):
@@ -169,6 +179,8 @@ class POCTaskGroup(POCTaskGroupBase):
     success_level: Optional[int]
     created_at: datetime
     completed_at: Optional[datetime]
+    start_date: Optional[date] = None
+    due_date: Optional[date] = None
     success_criteria_ids: List[int] = []
     tasks: List[POCTask] = []
 
