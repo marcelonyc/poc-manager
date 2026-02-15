@@ -33,6 +33,9 @@ PyGithub==2.1.1
 # Image handling
 Pillow==12.1.1
 
+# Charts and data visualization
+matplotlib==3.10.8
+
 # AI Assistant (LlamaIndex + Ollama)
 llama-index-core==0.14.14
 llama-index-llms-ollama==0.9.1
