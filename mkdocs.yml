@@ -57,6 +57,7 @@ markdown_extensions:
 
 nav:
   - Home: index.md
+  - About: ABOUT.md
   - Getting Started:
     - Overview: getting-started/overview.md
     - Login & Authentication: getting-started/login.md
