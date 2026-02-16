@@ -1,0 +1,10 @@
+# robots.txt for POC Manager Info Site
+# Allow search engines to crawl and index all content
+
+User-agent: *
+Allow: /
+Disallow: /assets/
+Disallow: /images/
+
+# Sitemap location
+Sitemap: https://pocmanager.marcelonyc.com/sitemap.xml
