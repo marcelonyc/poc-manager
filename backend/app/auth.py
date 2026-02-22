@@ -70,8 +70,44 @@ async def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(security),
     db: Session = Depends(get_db),
 ) -> User:
-    """Get the current authenticated user with tenant context"""
+    """Get the current authenticated user with tenant context.
+
+    Supports both JWT tokens and long-lived API keys (prefixed with ``pocm_``).
+    """
     token = credentials.credentials
+
+    # --- API-key path ---
+    if token.startswith("pocm_"):
+        from app.services.api_key_service import authenticate_api_key
+
+        user = authenticate_api_key(db, token)
+        if user is None:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid or expired API key",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+        if not user.is_active:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Inactive user",
+            )
+        if user.is_blocked:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Account has been blocked. Please contact support.",
+            )
+        # For API-key auth, use the user's primary role & tenant
+        setattr(user, "_current_role", user.role)
+        default_tr = user.get_default_tenant_role()
+        setattr(
+            user,
+            "_current_tenant_id",
+            default_tr.tenant_id if default_tr else user.tenant_id,
+        )
+        return user
+
+    # --- JWT path (existing behaviour) ---
     payload = decode_token(token)
 
     email: str = payload.get("sub")

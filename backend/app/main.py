@@ -38,6 +38,7 @@ from app.routers import (
     public_pocs,
     chat,
     encryption,
+    api_keys,
 )
 
 # Configure logging
@@ -89,6 +90,7 @@ app.include_router(password_reset.router)
 app.include_router(demo_request.router)
 app.include_router(chat.router)
 app.include_router(encryption.router)
+app.include_router(api_keys.router)
 
 
 @app.get("/")

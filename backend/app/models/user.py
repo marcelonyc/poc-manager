@@ -65,6 +65,9 @@ class User(Base):
         back_populates="created_by_user",
         foreign_keys="POCPublicLink.created_by",
     )
+    api_keys = relationship(
+        "APIKey", back_populates="user", cascade="all, delete-orphan"
+    )
 
     def get_role_for_tenant(self, tenant_id: int):
         """Get user's role for a specific tenant"""

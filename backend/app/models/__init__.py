@@ -32,6 +32,7 @@ from app.models.demo_request import (
     DemoConversionRequest,
 )
 from app.models.encryption_key import EncryptionKey
+from app.models.api_key import APIKey
 
 __all__ = [
     "User",
@@ -65,4 +66,5 @@ __all__ = [
     "EmailVerificationToken",
     "DemoConversionRequest",
     "EncryptionKey",
+    "APIKey",
 ]

@@ -61,6 +61,12 @@ class Settings(BaseSettings):
     # Integrations (Optional defaults)
     SLACK_DEFAULT_TOKEN: str = ""
     SLACK_DEFAULT_CHANNEL: str = ""
+
+    # Slack App (slash-command integration)
+    SLACK_BOT_TOKEN: str = ""
+    SLACK_SIGNING_SECRET: str = ""
+    SLACK_CLIENT_ID: str = ""
+    SLACK_CLIENT_SECRET: str = ""
     JIRA_DEFAULT_URL: str = ""
     JIRA_DEFAULT_EMAIL: str = ""
     JIRA_DEFAULT_API_TOKEN: str = ""

@@ -153,14 +153,12 @@ export default function Layout() {
                                         Products
                                     </Link>
                                 )}
-                                {user?.role !== 'customer' && (
-                                    <Link
-                                        to="settings"
-                                        className="inline-flex items-center px-1 pt-1 text-sm font-medium text-gray-500 hover:text-gray-900"
-                                    >
-                                        Settings
-                                    </Link>
-                                )}
+                                <Link
+                                    to="settings"
+                                    className="inline-flex items-center px-1 pt-1 text-sm font-medium text-gray-500 hover:text-gray-900"
+                                >
+                                    Settings
+                                </Link>
                             </div>
                         </div>
                         <div className="flex items-center">

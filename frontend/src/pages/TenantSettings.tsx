@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { api, API_URL } from '../lib/api'
 import { useAuthStore } from '../store/authStore'
 import toast from 'react-hot-toast'
+import APIKeyManager from '../components/APIKeyManager'
 
 interface Tenant {
     id: number
@@ -306,10 +307,14 @@ export default function TenantSettings() {
     if (user?.role === 'platform_admin') {
         return (
             <div className="p-6">
-                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                <h1 className="text-3xl font-bold text-gray-900 mb-6">Settings</h1>
+                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
                     <p className="text-yellow-800">
                         Platform Admins don't have tenant-specific settings. Use the Tenants page to manage tenants.
                     </p>
+                </div>
+                <div className="bg-white rounded-lg shadow-md p-6">
+                    <APIKeyManager />
                 </div>
             </div>
         )
@@ -318,8 +323,9 @@ export default function TenantSettings() {
     if (user?.role !== 'tenant_admin') {
         return (
             <div className="p-6">
-                <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-                    <p className="text-red-800">Access denied. Only Tenant Admins can access these settings.</p>
+                <h1 className="text-3xl font-bold text-gray-900 mb-6">Settings</h1>
+                <div className="bg-white rounded-lg shadow-md p-6">
+                    <APIKeyManager />
                 </div>
             </div>
         )
@@ -899,6 +905,11 @@ export default function TenantSettings() {
                     )}
                 </div>
             )}
+
+            {/* API Key Management — available for all tenant admins */}
+            <div className="bg-white rounded-lg shadow-md p-6">
+                <APIKeyManager />
+            </div>
         </div>
     )
 }
