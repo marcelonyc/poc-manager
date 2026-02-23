@@ -1,5 +1,10 @@
 # POC Manager
 
+## 📸 Overview
+
+![Sales Engineer Dashboard](info-site/images/sales-engineer-view.png)
+
+
 A comprehensive multi-tenant web application for managing Proof of Concept (POC) engagements.
 
 [Try it! Get immediate access to a fully working environment](https://pocmanager.marcelonyc.com/app/demo/request)
