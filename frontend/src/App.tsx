@@ -24,6 +24,7 @@ import AcceptTenantInvitation from './pages/AcceptTenantInvitation'
 import AcceptPOCInvitation from './pages/AcceptPOCInvitation'
 import Layout from './components/Layout'
 import HelpBubble from './components/HelpBubble'
+import NotFound from './pages/NotFound'
 
 function App() {
     const { isAuthenticated, user, _hasHydrated } = useAuthStore()
@@ -62,6 +63,7 @@ function App() {
                         <Route path="invitations" element={<PlatformAdminInvitations />} />
                         <Route path="demo-requests" element={<DemoRequests />} />
                         <Route path="admin/demo-conversions/:requestId" element={<DemoConversionApproval />} />
+                        <Route path="*" element={<NotFound />} />
                     </Route>
                 ) : (
                     <Route path="*" element={<Navigate to="login" replace />} />
