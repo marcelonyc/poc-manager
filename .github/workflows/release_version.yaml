@@ -30,31 +30,31 @@ jobs:
           proxy_command: |
             cloudflared access ssh --hostname ${{ secrets.SSH_HOST }} --id ${{ secrets.CF_CLIENT_ID }} --secret ${{ secrets.CF_CLIENT_SECRET }}
           script: |
-          REPO_NAME=${{ github.event.repository.name }}
-          # 1. Exit  if directory doesn't exist
-          cd ~/$REPO_NAME 
-          if [ $? -ne 0 ]; then
-            echo "Directory ~/$REPO_NAME does not exist. Exiting."
-            exit 1
-          fi
+            REPO_NAME=${{ github.event.repository.name }}
+            # 1. Exit  if directory doesn't exist
+            cd ~/$REPO_NAME 
+            if [ $? -ne 0 ]; then
+              echo "Directory ~/$REPO_NAME does not exist. Exiting."
+              exit 1
+            fi
 
-          # 2. Download ONLY the docker-compose file
-          # Note: Use GITHUB_TOKEN for private repos
-          wget -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}"  \
-          -O docker-compose.yml $(gh api repos/${{ github.actor }}/${{ github.repository.name }}/contents/docker-compose.prod.yml | jq -r .download_url)
+            # 2. Download ONLY the docker-compose file
+            # Note: Use GITHUB_TOKEN for private repos
+            wget -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}"  \
+            -O docker-compose.yml $(gh api repos/${{ github.actor }}/${{ github.repository.name }}/contents/docker-compose.prod.yml | jq -r .download_url)
 
 
-          # 3. Authenticate and Setup .env
-          echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+            # 3. Authenticate and Setup .env
+            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
 
-          # Ensure .env exists (or create it) before sed
-          if [ ! -f .env ]; then
-            echo ".env file not found"
-            exit 1
-          else
-            sed -i "s/^VERSION=.*/VERSION=${{ github.ref_name }}/" .env
-          fi
+            # Ensure .env exists (or create it) before sed
+            if [ ! -f .env ]; then
+              echo ".env file not found"
+              exit 1
+            else
+              sed -i "s/^VERSION=.*/VERSION=${{ github.ref_name }}/" .env
+            fi
 
-          # 4. Pull and Deploy
-          docker compose pull
-          docker compose up -d --remove-orphans
+            # 4. Pull and Deploy
+            docker compose pull
+            docker compose up -d --remove-orphans
