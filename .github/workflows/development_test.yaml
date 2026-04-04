@@ -6,6 +6,11 @@ on:
       release:
         types: [published]
   workflow_dispatch:
+    inputs:
+          version:
+            description: 'Version to deploy (Manual only)'
+            required: true
+            default: 'v1.0.0'
 
 permissions:
   actions: read # for detecting the Github Actions environment.
@@ -25,6 +30,16 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Set the version 
+        id: vars
+        run: |
+          # If triggered manually, use the input. 
+          # If triggered by push, use a default (like 'latest' or a short SHA)
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            echo "APP_VERSION=${{ github.event.release.tag_name }}" >> $GITHUB_ENV
+          else
+            echo "APP_VERSION=latest" >> $GITHUB_ENV
+          fi
 
       - name: Execute Remote Deployment
         uses: appleboy/ssh-action@v1.0.3
@@ -57,7 +72,7 @@ jobs:
               echo ".env file not found"
               exit 1
             else
-              sed -i "s/^VERSION=.*/VERSION=${{ github.ref_name }}/" .env
+              sed -i "s/^VERSION=.*/VERSION=${{ env.APP_VERSION }}/" .env
             fi
 
             # 4. Pull and Deploy
