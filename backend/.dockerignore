@@ -1,0 +1,12 @@
+.git
+__pycache__
+*.pyc
+*.pyo
+.env
+.env.*
+*.md
+.pytest_cache
+.mypy_cache
+htmlcov
+.coverage
+uploads

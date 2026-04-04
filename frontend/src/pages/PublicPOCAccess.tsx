@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { api, API_URL } from '../lib/api'
+import { api } from '../lib/api'
 import toast from 'react-hot-toast'
 import CustomerPOCView from '../components/CustomerPOCView'
 

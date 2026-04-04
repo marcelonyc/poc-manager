@@ -1,33 +1,47 @@
-FROM python:3.11-slim
-ARG USER_ID=${USER_ID:-1000}
-ARG GROUP_ID=${GROUP_ID:-1000}
-RUN addgroup --gid ${GROUP_ID} appuser && \
-    adduser -u ${USER_ID} --disabled-password --gid ${GROUP_ID} appuser
+# ── Stage 1: Build dependencies ──
+FROM python:3.11-slim AS builder
 
-WORKDIR /app
-RUN chown appuser:appuser /app
+ARG PIP_TRUSTED_HOST
+ARG PIP_INDEX_URL
+ENV PIP_TRUSTED_HOST=${PIP_TRUSTED_HOST}
+ENV PIP_INDEX_URL=${PIP_INDEX_URL}
 
-# Install system dependencies
-RUN apt-get update && apt-get install -y \
+WORKDIR /build
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
-    postgresql-client \
+    libpq-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy requirements and install as root so binaries land on PATH
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir --prefix=/install -r requirements.txt
+
+# ── Stage 2: Production image ──
+FROM python:3.11-slim
+
+ARG VERSION=latest
+LABEL org.opencontainers.image.version="${VERSION}"
+
+WORKDIR /app
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    postgresql-client \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy installed Python packages from builder
+COPY --from=builder /install /usr/local
 
 # Copy application code
 COPY . .
 
-RUN chown -R appuser:appuser /app
-USER appuser
+# Ensure uploads directory exists for volume mount
+RUN mkdir -p /app/uploads
 
-# Expose port
 EXPOSE 8000
 
-# Suppress external dependency deprecation warnings that don't affect functionality
-ENV PYTHONWARNINGS="ignore:.*crypt.*:"
+ENV PYTHONWARNINGS="ignore:.*crypt.*:" \
+    PYTHONUNBUFFERED=1
 
-# Run the application
-CMD ["uvicorn", "app.main:combined_app", "--host", "0.0.0.0", "--port", "8000"]
+ENTRYPOINT ["/app/entrypoint.sh"]
+CMD ["uvicorn", "app.main:combined_app", "--host", "0.0.0.0", "--port", "8000", "--workers", "4"]

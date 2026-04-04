@@ -2,7 +2,6 @@ import { Outlet, Link, useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../store/authStore'
 import { useState, useEffect } from 'react'
 import { api, API_URL } from '../lib/api'
-import HelpBubble from './HelpBubble'
 import AIAssistantButton from './AIAssistantButton'
 
 // Helper function to adjust color brightness

@@ -68,12 +68,6 @@ export default function Products() {
         }
     }
 
-    const handleEdit = (product: Product) => {
-        setEditingProduct(product)
-        setProductName(product.name)
-        setShowForm(true)
-    }
-
     const handleRenameClick = (product: Product) => {
         setRenamingProduct(product)
         setNewName(product.name)

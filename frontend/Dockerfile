@@ -1,26 +1,36 @@
-FROM node:20-alpine
-
-ARG USER_ID=${USER_ID:-1000}
-ARG GROUP_ID=${GROUP_ID:-1000}
-RUN addgroup --gid ${GROUP_ID} appuser && \
-    adduser -u ${USER_ID} -D -G appuser appuser
+# syntax=docker/dockerfile:1
+# ── Stage 1: Build ──
+FROM node:20-alpine AS builder
 
 WORKDIR /app
-RUN chown appuser:appuser /app
 
-USER appuser
-
-# Copy package files
 COPY package*.json ./
+RUN --mount=type=secret,id=npmrc,target=/root/.npmrc npm ci
 
-# Install dependencies
-RUN npm install
-
-# Copy application code
 COPY . .
 
-# Expose port
-EXPOSE 3001
+ARG VITE_API_URL=/api
+ARG BASE_URL=/
+ENV VITE_API_URL=${VITE_API_URL}
+ENV BASE_URL=${BASE_URL}
 
-# Start development server
-CMD ["npm", "run", "dev"]
+RUN npm run build
+
+# ── Stage 2: Serve with nginx ──
+FROM nginx:stable-alpine
+
+ARG VERSION=latest
+LABEL org.opencontainers.image.version="${VERSION}"
+
+# Remove default nginx config
+RUN rm /etc/nginx/conf.d/default.conf
+
+# Copy our custom nginx config
+COPY nginx.conf /etc/nginx/conf.d/default.conf
+
+# Copy built assets from builder stage
+COPY --from=builder /app/dist /usr/share/nginx/html
+
+EXPOSE 80
+
+CMD ["nginx", "-g", "daemon off;"]

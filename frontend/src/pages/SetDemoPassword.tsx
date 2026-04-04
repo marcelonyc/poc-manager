@@ -59,7 +59,7 @@ const SetDemoPassword: React.FC = () => {
         setSubmitting(true);
 
         try {
-            const response = await api.post('/demo/set-password', {
+            await api.post('/demo/set-password', {
                 token,
                 password,
             });

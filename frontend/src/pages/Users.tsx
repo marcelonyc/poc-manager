@@ -60,7 +60,7 @@ export default function Users() {
         setSubmitting(true)
 
         try {
-            const response = await api.post('/users/invite', formData)
+            await api.post('/users/invite', formData)
             toast.success('Invitation sent! The user will receive an email to set their password.')
             setShowInviteForm(false)
             setFormData({

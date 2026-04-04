@@ -89,7 +89,7 @@ interface POCFormProps {
 }
 
 export default function POCForm({ pocId, initialData, onClose }: POCFormProps) {
-    const { user } = useAuthStore()
+    useAuthStore()
     const navigate = useNavigate()
     const [loading, setLoading] = useState(false)
     const [products, setProducts] = useState<Product[]>([])
@@ -414,7 +414,7 @@ export default function POCForm({ pocId, initialData, onClose }: POCFormProps) {
         }
 
         try {
-            const response = await api.post(`/pocs/${pocId}/participants`, newParticipant)
+            await api.post(`/pocs/${pocId}/participants`, newParticipant)
             toast.success('Participant added')
             fetchPOCData()
             setNewParticipant({ email: '', full_name: '', is_sales_engineer: false, is_customer: false })
@@ -662,7 +662,7 @@ export default function POCForm({ pocId, initialData, onClose }: POCFormProps) {
             await api.put(`/tasks/pocs/${pocId}/task-groups/${groupId}`, { status: newStatus })
             setPocTaskGroups(pocTaskGroups.map(g => g.id === groupId ? { ...g, status: newStatus } : g))
         } catch (error: any) {
-            alert(formatErrorMessage(error))
+            alert(formatErrorMessage(error, 'Failed to update task group status'))
         }
     }
 
@@ -1165,7 +1165,7 @@ export default function POCForm({ pocId, initialData, onClose }: POCFormProps) {
                                                             { count: satisfied, status: 'satisfied', label: 'Satisfied', color: 'gray-400', activeColor: 'emerald-600' },
                                                             { count: partiallySatisfied, status: 'partially_satisfied', label: 'Partially Satisfied', color: 'gray-400', activeColor: 'yellow-600' },
                                                             { count: notSatisfied, status: 'not_satisfied', label: 'Not Satisfied', color: 'gray-400', activeColor: 'orange-600' },
-                                                        ].map(({ count, status, label, color, activeColor }) => (
+                                                        ].map(({ count, status, label, activeColor }) => (
                                                             <td key={status} className="px-3 py-3 text-center text-sm text-gray-700">
                                                                 <button
                                                                     className={`${count > 0 ? `font-semibold text-${activeColor} hover:underline cursor-pointer` : 'text-gray-400 cursor-default'}`}
@@ -1413,7 +1413,7 @@ export default function POCForm({ pocId, initialData, onClose }: POCFormProps) {
                                 <input
                                     type="text"
                                     placeholder="Target Value"
-                                    value={newCriteria.target_value}
+                                    value={newCriteria.target_value || ''}
                                     onChange={(e) => setNewCriteria({ ...newCriteria, target_value: e.target.value })}
                                     className="w-full px-3 py-2 border border-gray-300 rounded-lg"
                                 />
@@ -2287,7 +2287,7 @@ export default function POCForm({ pocId, initialData, onClose }: POCFormProps) {
                                                 {participant.status !== 'accepted' && participant.invited_at && (
                                                     <p className="text-xs text-gray-400 mt-1">
                                                         Invited: {new Date(participant.invited_at).toLocaleDateString()}
-                                                        {participant.resend_count > 0 && ` (Resent ${participant.resend_count}x)`}
+                                                        {(participant.resend_count ?? 0) > 0 && ` (Resent ${participant.resend_count}x)`}
                                                     </p>
                                                 )}
                                             </div>

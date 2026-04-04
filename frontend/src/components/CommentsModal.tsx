@@ -109,11 +109,11 @@ export default function CommentsModal({ pocId, taskId, taskGroupId, isPublicAcce
             let url = ''
             if (isPublicAccess) {
                 // Remove is_internal and undefined fields for public comments
-                delete commentData.is_internal
+                const { is_internal: _, ...publicCommentData } = commentData
                 url = `/public/pocs/${publicPocData?.access_token}/comments`
                 if (taskId) url += `?poc_task_id=${taskId}`
                 else if (taskGroupId) url += `?poc_task_group_id=${taskGroupId}`
-                await api.post(url, commentData)
+                await api.post(url, publicCommentData)
             } else {
                 url = `/pocs/${pocId}/comments`
                 if (taskId) url += `?task_id=${taskId}`

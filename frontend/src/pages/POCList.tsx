@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { api, API_URL } from '../lib/api'
 import toast from 'react-hot-toast'
 import { useAuthStore } from '../store/authStore'
@@ -22,7 +22,6 @@ export default function POCList() {
     const [pocs, setPocs] = useState<POC[]>([])
     const [loading, setLoading] = useState(true)
     const [showCreateForm, setShowCreateForm] = useState(false)
-    const navigate = useNavigate()
 
     const isCustomer = user?.role === 'customer'
 

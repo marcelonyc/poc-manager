@@ -391,7 +391,7 @@ export default function TaskTemplates() {
         e.dataTransfer.dropEffect = 'copy'
     }
 
-    const handleDrop = async (group: TaskGroup) => async (e: React.DragEvent) => {
+    const handleDrop = (group: TaskGroup) => async (e: React.DragEvent) => {
         e.preventDefault()
         if (!draggedTask) return
 
@@ -725,7 +725,7 @@ export default function TaskTemplates() {
                                     className={`bg-white rounded-lg shadow-md p-5 hover:shadow-lg transition-all border-2 ${draggedTask ? 'border-dashed border-blue-400' : 'border-transparent'
                                         }`}
                                     onDragOver={handleDragOver}
-                                    onDrop={(e) => handleDrop(e, group)}
+                                    onDrop={handleDrop(group)}
                                 >
                                     <div className="flex justify-between items-start mb-3">
                                         <h3 className="text-lg font-semibold text-gray-900 flex-1">
@@ -760,7 +760,7 @@ export default function TaskTemplates() {
                                                             {task.title}
                                                         </span>
                                                         <button
-                                                            onClick={() => handleRemoveTaskFromGroup(group.id, task.id)}
+                                                            onClick={() => handleRemoveTaskFromGroup(group.id, task.id, task.title)}
                                                             className="text-red-600 hover:text-red-800 ml-2 flex-shrink-0"
                                                             title="Remove task from group"
                                                         >
@@ -1241,7 +1241,12 @@ export default function TaskTemplates() {
                                                             type="button"
                                                             onClick={() => {
                                                                 setEditingGroupResource(resource)
-                                                                setGroupResourceFormData(resource)
+                                                                setGroupResourceFormData({
+                                                                    title: resource.title,
+                                                                    description: resource.description || '',
+                                                                    resource_type: resource.resource_type,
+                                                                    content: resource.content,
+                                                                })
                                                                 setShowGroupResourceForm(true)
                                                             }}
                                                             className="text-blue-600 hover:text-blue-800 text-sm"

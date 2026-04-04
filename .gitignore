@@ -55,3 +55,4 @@ coverage/
 uploads/
 !uploads/.gitkeep
 .env-vite
+frontend/.npmrc
