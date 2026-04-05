@@ -10,7 +10,7 @@ on:
           version:
             description: 'Version to deploy (Manual only)'
             required: true
-            default: 'v1.0.0'
+            default: '1.0.0'
 
 permissions:
   actions: read # for detecting the Github Actions environment.
@@ -38,7 +38,7 @@ jobs:
           if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
             echo "APP_VERSION=${{ github.event.release.tag_name }}" >> $GITHUB_ENV
           else
-            echo "APP_VERSION=latest" >> $GITHUB_ENV
+            echo "APP_VERSION=${{ github.event.inputs.version }}" >> $GITHUB_ENV
           fi
 
       - name: Execute Remote Deployment
@@ -73,9 +73,9 @@ jobs:
               echo ".env file not found"
               exit 1
             else
-              sed -i "s/^VERSION=.*/VERSION=${{ env.APP_VERSION }}/" .env
+              sed -i "s/^VERSION=.*/VERSION=$APP_VERSION/" .env
             fi
 
             # 4. Pull and Deploy
-            docker compose pull
+            VERSION=docker compose pull
             docker compose up -d --remove-orphans
