@@ -73,9 +73,9 @@ jobs:
               echo ".env file not found"
               exit 1
             else
-              sed -i "s/^VERSION=.*/VERSION=$APP_VERSION/" .env
+              sed -i "s/^VERSION=.*/VERSION=${{ env.APP_VERSION }}/" .env
             fi
 
             # 4. Pull and Deploy
-            VERSION=$APP_VERSION docker compose pull
-            VERSION=$APP_VERSION docker compose up -d --remove-orphans
+            VERSION=${{ env.APP_VERSION }} docker compose pull
+            VERSION=${{ env.APP_VERSION }} docker compose up -d --remove-orphans
