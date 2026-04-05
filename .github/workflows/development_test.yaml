@@ -50,7 +50,6 @@ jobs:
           # proxy_command: |
           #   cloudflared access ssh --hostname ${{ secrets.SSH_HOST }} --id ${{ secrets.CF_CLIENT_ID }} --secret ${{ secrets.CF_CLIENT_SECRET }}
           script: |
-            soource ~/.secrets
             REPO_NAME=${{ github.event.repository.name }}
             # 1. Exit  if directory doesn't exist
             cd ~/$REPO_NAME
