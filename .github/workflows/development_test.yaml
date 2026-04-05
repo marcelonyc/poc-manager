@@ -62,7 +62,7 @@ jobs:
 
             # 2. Download ONLY the docker-compose file
             # Note: Use GITHUB_TOKEN for private repos
-            wget -H "Authorization: token $xx{{ secrets.GITHUB_TOKEN }}"  \
+            wget -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}"  \
             -O docker-compose.yml $(gh api repos/${{ github.repository }}/contents/docker-compose.prod.yml | jq -r .download_url)
 
 
