@@ -77,5 +77,5 @@ jobs:
             fi
 
             # 4. Pull and Deploy
-            VERSION=docker compose pull
-            docker compose up -d --remove-orphans
+            VERSION=$APP_VERSION docker compose pull
+            VERSION=$APP_VERSION docker compose up -d --remove-orphans
