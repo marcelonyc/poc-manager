@@ -36,9 +36,9 @@ jobs:
           # If triggered manually, use the input. 
           # If triggered by push, use a default (like 'latest' or a short SHA)
           if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
-            echo "APP_VERSION=${{ github.event.release.tag_name }}" >> $GITHUB_ENV
-          else
             echo "APP_VERSION=${{ github.event.inputs.version }}" >> $GITHUB_ENV
+          else
+            echo "APP_VERSION=${{ github.event.release.tag_name }}" >> $GITHUB_ENV          
           fi
 
       - name: Execute Remote Deployment
