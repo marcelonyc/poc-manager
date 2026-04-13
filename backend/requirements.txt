@@ -29,7 +29,7 @@ markdown==3.8.1
 PyGithub==2.1.1
 
 # Image handling
-Pillow==12.1.1
+Pillow==12.2.0
 
 # Charts and data visualization
 matplotlib==3.10.8
